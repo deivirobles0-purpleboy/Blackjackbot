@@ -110,7 +110,10 @@ async def test_three_phases_same_message_and_processing_recovery(
         DEFAULT_DOOR_IMAGES[language], "candy_win" if candy_win else "candy_lose"
     )
     if not candy_win:
-        assert "<@11>: -3\n<@12>: -4" in result_embed.description
+        assert (
+            "<@11>: -3 <:doce:1556451862969065512>\n<@12>: -4 <:doce:1556451862969065512>"
+            in result_embed.description
+        )
         assert result_embed.title == (
             "Que mal! Truco..." if language == Language.ES else "Foi mal! Travessuras..."
         )

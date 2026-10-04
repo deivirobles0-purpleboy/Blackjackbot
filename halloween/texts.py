@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from config.constants import PARTICIPANT_ROLE_ID, REGISTRATION_CHANNEL_IDS
+from config.constants import CANDY_EMOJI, PARTICIPANT_ROLE_ID, REGISTRATION_CHANNEL_IDS
 from halloween.models import Language
 
 
@@ -40,7 +40,7 @@ TEXTS = {
         candy_lose="Desafortunadamente el Gatico Momia se llevó algunos de tus dulces...",
         lose_title="Que mal! Truco...",
         footer="Consulta /dulces para revisar el Top!",
-        candy="Dulces",
+        candy=CANDY_EMOJI,
         not_registered=f"Debes de poseer el Rol: <@&{PARTICIPANT_ROLE_ID}> para participar..."
         f"Ingresa en <#{REGISTRATION_CHANNEL_IDS['ES']}> y registrate",
         duplicate="Ya participaste en esta puerta.",
@@ -66,7 +66,7 @@ TEXTS = {
         candy_lose="Infelizmente, o Gatinho Múmia levou alguns dos teus doces com ele...",
         lose_title="Foi mal! Travessuras...",
         footer="Confira o /doces para consultar o top",
-        candy="Doces",
+        candy=CANDY_EMOJI,
         not_registered=f"Você precisa ter o cargo <@&{PARTICIPANT_ROLE_ID}> para participar... "
         f"Acesse ao <#{REGISTRATION_CHANNEL_IDS['BR']}> e registre-se.",
         duplicate="Você já participou desta porta.",

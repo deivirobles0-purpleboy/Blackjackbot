@@ -24,7 +24,7 @@ def door_embed(
             (
                 f"🎃 <@{winner['user_id']}>: {winner['candies']} {text.candy}"
                 if drop.candy_win
-                else f"<@{winner['user_id']}>: {winner['candies']}"
+                else f"<@{winner['user_id']}>: {winner['candies']} {text.candy}"
             )
             for winner in winners
         )

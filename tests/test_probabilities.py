@@ -118,7 +118,10 @@ def test_loss_embed_with_zero_balance_and_matching_footer(language):
     embed = door_embed(
         drop, "result", settings, [{"user_id": 11, "candies": 0}, {"user_id": 12, "candies": -4}]
     )
-    assert "<@11>: 0\n<@12>: -4" in embed.description
+    assert (
+        "<@11>: 0 <:doce:1556451862969065512>\n<@12>: -4 <:doce:1556451862969065512>"
+        in embed.description
+    )
     if language == Language.BR:
         assert embed.description.startswith(
             "Infelizmente, o Gatinho Múmia levou alguns dos teus doces com ele..."

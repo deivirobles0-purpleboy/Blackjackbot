@@ -207,6 +207,8 @@ Los cambios manuales, activaciones y ajustes quedan registrados en `admin_logs`,
 incluido el ID del responsable. Las cantidades se modifican atómicamente.
 
 Rankings: orden descendente por dulces; los empates se ordenan por User ID ascendente.
+Las cantidades del ranking, premios y robos usan `<:doce:1556451862969065512>` como unidad
+en ES y BR; por ejemplo, `<@usuario>: 4 <:doce:1556451862969065512>`.
 Se omiten saldos cero. Cada comando tiene cooldown independiente de 30 segundos por
 usuario y servidor, con el tiempo restante real y respuesta privada al bloquear.
 Este cooldown breve se guarda en memoria y se reinicia al reiniciar el bot; los

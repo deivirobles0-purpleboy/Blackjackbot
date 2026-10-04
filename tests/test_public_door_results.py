@@ -101,7 +101,11 @@ async def test_button_flow_reveals_only_in_original_public_embed(
         assert final.image.url == DEFAULT_DOOR_IMAGES[language].candy_win
     else:
         assert final.title == TEXTS[language].lose_title
-        assert final.description == f"{TEXTS[language].candy_lose}\n\n<@11>: -3\n<@12>: -4"
+        assert final.description == (
+            f"{TEXTS[language].candy_lose}\n\n"
+            "<@11>: -3 <:doce:1556451862969065512>\n"
+            "<@12>: -4 <:doce:1556451862969065512>"
+        )
         assert final.image.url == DEFAULT_DOOR_IMAGES[language].candy_lose
     assert final.footer.text == (
         "Consulta /dulces para revisar el Top!"

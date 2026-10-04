@@ -9,6 +9,8 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
 - Suite completa con PostgreSQL tras separar recepción de participantes y espera: **176 pruebas aprobadas, ninguna omitida**.
+- Cambio posterior de unidades a `<:doce:1556451862969065512>`: **51 pruebas de componentes,
+  flujo y recompensas aprobadas**; ranking ES/BR comprobado por separado con el emoji exacto.
 - Cambio de `/porta_de_teste`: **15 pruebas del comando y componentes aprobadas**, incluidas
   7 nuevas regresiones. Se elimina la respuesta temporal tras publicar, sin confirmación privada
   ni enlace; se conservan los errores de publicación para el manejador habitual.
@@ -32,6 +34,7 @@ La suite comprobó:
   datos inválidos y fallos al guardar conservan la pantalla para reintentar.
 - Un resultado común persistido por puerta y descuentos individuales; nuevas probabilidades afectan nuevas puertas.
 - Pérdidas limitadas al saldo disponible, incluido cero, y actualización inmediata del ranking.
+- Cantidades de premios, robos (incluido cero) y ranking usan el emoji doce en ES y BR.
 - Dos puertas concurrentes no sobregiran el mismo saldo; claims duplicados y reinicios no vuelven a descontar.
 - Rollback de pérdidas si falla guardar la participación; simulaciones mantienen saldos intactos.
 - Migración repetible desde el esquema anterior conserva puntuaciones y puertas activas.
