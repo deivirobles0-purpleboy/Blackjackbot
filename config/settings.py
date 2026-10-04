@@ -17,6 +17,17 @@ class DoorImages:
     result: str = ""
 
 
+DEFAULT_DOOR_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif"
+DEFAULT_DOOR_IMAGES = {
+    language: DoorImages(
+        closed=DEFAULT_DOOR_GIF_URL,
+        waiting=DEFAULT_DOOR_GIF_URL,
+        result=DEFAULT_DOOR_GIF_URL,
+    )
+    for language in Language
+}
+
+
 def validate_image_url(value: str, name: str) -> str:
     value = value.strip()
     if value:
@@ -54,7 +65,8 @@ class Settings:
             values = {}
             for phase in ("closed", "waiting", "result"):
                 name = f"{language.value}_DOOR_{phase.upper()}_GIF"
-                values[phase] = validate_image_url(os.getenv(name, ""), name)
+                value = os.getenv(name, "").strip() or getattr(DEFAULT_DOOR_IMAGES[language], phase)
+                values[phase] = validate_image_url(value, name)
             images[language] = DoorImages(**values)
         guild = os.getenv("COMMAND_GUILD_ID", "").strip()
         return cls(

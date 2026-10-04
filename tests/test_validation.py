@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from config.settings import DoorImages, Settings, validate_image_url
+from config.settings import DEFAULT_DOOR_IMAGES, Settings, validate_image_url
 from database.connection import connection_options
 from halloween.models import Language, adjust_balance, validate_minutes
 from utils.logger import SecretFormatter
@@ -42,13 +42,41 @@ def test_settings_read_env_without_gifs(monkeypatch):
         for phase in ("CLOSED", "WAITING", "RESULT"):
             monkeypatch.delenv(f"{language}_DOOR_{phase}_GIF", raising=False)
     settings = Settings.from_env()
-    assert settings.images[Language.ES] == DoorImages()
+    assert settings.images == DEFAULT_DOOR_IMAGES
     assert "test-token" not in repr(settings)
     assert settings.database_url not in repr(settings)
     assert connection_options(settings)["ssl"] == "require"
     monkeypatch.delenv("DATABASE_URL")
     with pytest.raises(ValueError, match="Missing required environment variable: DATABASE_URL"):
         Settings.from_env()
+
+
+@pytest.mark.parametrize("language", list(Language))
+@pytest.mark.parametrize("phase", ["closed", "waiting", "result"])
+def test_gif_override_is_independent_and_empty_uses_default(monkeypatch, language, phase):
+    monkeypatch.setattr("config.settings.load_dotenv", lambda *a, **kw: None)
+    monkeypatch.setenv("DISCORD_TOKEN", "test-token")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test?sslmode=require")
+    monkeypatch.delenv("COMMAND_GUILD_ID", raising=False)
+    for current_language in Language:
+        for current_phase in ("closed", "waiting", "result"):
+            monkeypatch.delenv(
+                f"{current_language}_DOOR_{current_phase.upper()}_GIF", raising=False
+            )
+    name = f"{language}_DOOR_{phase.upper()}_GIF"
+    override = f"https://example.com/{language}/{phase}.gif"
+    monkeypatch.setenv(name, f"  {override}  ")
+    images = Settings.from_env().images
+    for current_language in Language:
+        for current_phase in ("closed", "waiting", "result"):
+            expected = (
+                override
+                if (current_language, current_phase) == (language, phase)
+                else getattr(DEFAULT_DOOR_IMAGES[current_language], current_phase)
+            )
+            assert getattr(images[current_language], current_phase) == expected
+    monkeypatch.setenv(name, " ")
+    assert Settings.from_env().images == DEFAULT_DOOR_IMAGES
 
 
 def test_reject_insecure_production_ssl(monkeypatch):

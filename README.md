@@ -95,9 +95,13 @@ y [Views persistentes del proyecto discord.py](https://github.com/Rapptz/discord
 | `COMMAND_GUILD_ID` | Opcional: servidor de sincronización para desarrollo |
 | `LOG_LEVEL` | Opcional: `INFO` por defecto |
 
-Los seis GIFs pueden permanecer vacíos durante el desarrollo; los embeds funcionan
-sin imagen y se registra qué fases están pendientes. No hay URLs gráficas externas
-de relleno. Las URLs finales deben ser HTTPS y accesibles directamente por Discord.
+Los seis GIFs ya tienen un valor predeterminado incluido en `config/settings.py`:
+`https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif`.
+Por petición del usuario, las tres fases de ambos idiomas utilizan ese mismo GIF.
+No necesitas configurar las seis variables para mostrar imágenes. Si una variable
+está ausente o vacía, se utiliza el valor predeterminado; una URL HTTPS en esa
+variable sustituye únicamente la fase e idioma correspondientes. Reinicia el bot
+después de cambiar las variables.
 
 ## Aiven PostgreSQL y SSL
 
@@ -335,7 +339,8 @@ y [despliegue de bots y variables](https://help.squarecloud.app/en-us/article/ho
    opción disponible en tu cuenta. Mantén la entrada `bot.py` y `requirements.txt`.
 3. Configura `DISCORD_TOKEN`, `DATABASE_URL` y la CA recomendada en las variables de
    la aplicación. No hace falta subir `.env` a producción.
-4. Añade los seis GIFs cuando estén disponibles y reinicia la aplicación para leerlos.
+4. El GIF ya está incluido para las seis fases; si deseas sustituirlo, configura las
+   variables correspondientes y reinicia la aplicación para leerlas.
 5. Revisa logs de conexión PostgreSQL, Cogs, sincronización y scheduler.
 6. Publica el registro, configura ES/BR y prueba primero una puerta simulada.
 7. Prueba con dos participantes, un usuario no registrado y un tercer participante.
@@ -343,7 +348,8 @@ y [despliegue de bots y variables](https://help.squarecloud.app/en-us/article/ho
 
 ## Recursos finales
 
-Completa las URLs directas, sin mezclarlas entre idiomas:
+Los GIFs proporcionados ya están integrados como valores predeterminados. Para
+utilizar imágenes diferentes en el futuro, puedes sustituirlas individualmente:
 
 ```dotenv
 ES_DOOR_CLOSED_GIF=

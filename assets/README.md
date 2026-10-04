@@ -1,6 +1,7 @@
 # Recursos gráficos
 
-Se utilizan URLs HTTPS en las seis variables `ES_DOOR_*_GIF` y `BR_DOOR_*_GIF`.
-No es necesario subir archivos GIF a este directorio. Si están vacías, los embeds
-siguen funcionando sin imagen. Usa enlaces directos al recurso gráfico, accesibles
-sin autenticación, y verifica su reproducción en Discord en la fase final.
+El GIF proporcionado está incluido como valor predeterminado para las tres fases
+ES y BR en `config/settings.py`. Las seis variables `ES_DOOR_*_GIF` y
+`BR_DOOR_*_GIF` permiten sustituir cada imagen de forma independiente.
+Si están ausentes o vacías, se utiliza el GIF predeterminado. No es necesario subir
+archivos GIF a este directorio. Verifica la reproducción en Discord al desplegar.

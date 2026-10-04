@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from config.settings import DoorImages, Settings
+from config.settings import DEFAULT_DOOR_IMAGES, Settings
 from halloween.manager import DoorManager
 from halloween.models import DropStatus, Language
 from halloween.views import door_custom_id
@@ -53,7 +53,7 @@ def manager(repo, channel):
     settings = Settings(
         "test",
         "postgresql://test@localhost/test?sslmode=require",
-        {language: DoorImages() for language in Language},
+        DEFAULT_DOOR_IMAGES.copy(),
     )
     bot = SimpleNamespace(repo=repo, settings=settings, user=SimpleNamespace(id=55))
     mgr = DoorManager(bot)
@@ -62,16 +62,17 @@ def manager(repo, channel):
     return mgr
 
 
-async def test_three_phases_same_message_and_processing_recovery(repo, monkeypatch):
-    await ready(repo)
+@pytest.mark.parametrize("language", list(Language))
+async def test_three_phases_same_message_and_processing_recovery(repo, monkeypatch, language):
+    await ready(repo, language)
     channel = FakeChannel()
     mgr = manager(repo, channel)
-    drop = await repo.prepare_drop(GUILD, Language.ES, CHANNEL, is_test=True)
+    drop = await repo.prepare_drop(GUILD, language, CHANNEL, is_test=True)
     await mgr.run_drop(drop.id)
     drop = await repo.drop(drop.id)
     await claim(repo, drop, 11)
     await claim(repo, drop, 12)
-    balances = [dict(row) for row in await repo.ranking(GUILD, Language.ES)]
+    balances = [dict(row) for row in await repo.ranking(GUILD, language)]
     restarted = manager(repo, channel)
     monkeypatch.setattr("halloween.manager.asyncio.sleep", AsyncMock())
     await restarted.run_drop(drop.id)
@@ -81,8 +82,11 @@ async def test_three_phases_same_message_and_processing_recovery(repo, monkeypat
     assert len(message.edits) == 2
     assert message.edits[0]["view"].children[0].disabled
     assert message.edits[1]["view"] is None
+    assert message.embed.image.url == DEFAULT_DOOR_IMAGES[language].closed
+    assert message.edits[0]["embed"].image.url == DEFAULT_DOOR_IMAGES[language].waiting
+    assert message.edits[1]["embed"].image.url == DEFAULT_DOOR_IMAGES[language].result
     assert (await repo.drop(drop.id)).status == DropStatus.FINISHED
-    assert [dict(row) for row in await repo.ranking(GUILD, Language.ES)] == balances
+    assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
 
 
 async def test_recover_send_before_message_id_commit_without_duplicate(repo):
