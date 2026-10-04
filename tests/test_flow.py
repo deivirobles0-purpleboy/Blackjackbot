@@ -1,0 +1,136 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
+from config.settings import DoorImages, Settings
+from halloween.manager import DoorManager
+from halloween.models import DropStatus, Language
+from halloween.views import door_custom_id
+from tests.test_postgres import CHANNEL, GUILD, STAFF, claim, ready
+
+pytestmark = pytest.mark.postgres
+
+
+class FakeMessage:
+    def __init__(self, message_id, custom_id, embed, author_id):
+        self.id = message_id
+        self.author = SimpleNamespace(id=author_id)
+        self.components = [SimpleNamespace(children=[SimpleNamespace(custom_id=custom_id)])]
+        self.edits = []
+        self.embed = embed
+
+    async def edit(self, **kwargs):
+        self.edits.append(kwargs)
+        return self
+
+
+class FakeChannel:
+    def __init__(self):
+        self.messages = {}
+        self.sends = 0
+
+    def history(self, **kwargs):
+        async def items():
+            for message in self.messages.values():
+                yield message
+
+        return items()
+
+    async def send(self, **kwargs):
+        self.sends += 1
+        message = FakeMessage(
+            100 + self.sends, kwargs["view"].children[0].custom_id, kwargs["embed"], 55
+        )
+        self.messages[message.id] = message
+        return message
+
+    async def fetch_message(self, message_id):
+        return self.messages[message_id]
+
+
+def manager(repo, channel):
+    settings = Settings(
+        "test",
+        "postgresql://test@localhost/test?sslmode=require",
+        {language: DoorImages() for language in Language},
+    )
+    bot = SimpleNamespace(repo=repo, settings=settings, user=SimpleNamespace(id=55))
+    mgr = DoorManager(bot)
+    mgr.leader.set()
+    mgr._channel = AsyncMock(return_value=channel)
+    return mgr
+
+
+async def test_three_phases_same_message_and_processing_recovery(repo, monkeypatch):
+    await ready(repo)
+    channel = FakeChannel()
+    mgr = manager(repo, channel)
+    drop = await repo.prepare_drop(GUILD, Language.ES, CHANNEL, is_test=True)
+    await mgr.run_drop(drop.id)
+    drop = await repo.drop(drop.id)
+    await claim(repo, drop, 11)
+    await claim(repo, drop, 12)
+    balances = [dict(row) for row in await repo.ranking(GUILD, Language.ES)]
+    restarted = manager(repo, channel)
+    monkeypatch.setattr("halloween.manager.asyncio.sleep", AsyncMock())
+    await restarted.run_drop(drop.id)
+    await restarted.run_drop(drop.id)
+    message = channel.messages[drop.message_id]
+    assert channel.sends == 1
+    assert len(message.edits) == 2
+    assert message.edits[0]["view"].children[0].disabled
+    assert message.edits[1]["view"] is None
+    assert (await repo.drop(drop.id)).status == DropStatus.FINISHED
+    assert [dict(row) for row in await repo.ranking(GUILD, Language.ES)] == balances
+
+
+async def test_recover_send_before_message_id_commit_without_duplicate(repo):
+    await ready(repo)
+    channel = FakeChannel()
+    mgr = manager(repo, channel)
+    drop = await repo.prepare_drop(GUILD, Language.ES, CHANNEL, is_test=True)
+    # Discord accepted the message; the process crashed before the DB commit.
+    message = FakeMessage(888, door_custom_id(Language.ES, drop.id), None, 55)
+    channel.messages[888] = message
+    await mgr.run_drop(drop.id)
+    assert channel.sends == 0
+    recovered = await repo.drop(drop.id)
+    assert recovered.message_id == 888
+    assert recovered.status == DropStatus.OPEN
+
+
+async def test_disable_cancels_unpublished_automatic_door(repo):
+    await ready(repo)
+    await repo.set_enabled(GUILD, True, STAFF)
+    await repo.pool.execute(
+        "UPDATE event_config SET next_drop_at=now()-interval '1 second' WHERE guild_id=$1", GUILD
+    )
+    drop = await repo.prepare_drop(GUILD, Language.ES)
+    await repo.set_enabled(GUILD, False, STAFF)
+    channel = FakeChannel()
+    await manager(repo, channel).run_drop(drop.id)
+    assert channel.sends == 0
+    assert (await repo.drop(drop.id)).status == DropStatus.CANCELLED
+
+
+async def test_disable_waits_for_inflight_publication(repo):
+    import asyncio
+
+    await ready(repo)
+    await repo.set_enabled(GUILD, True, STAFF)
+    await repo.pool.execute(
+        "UPDATE event_config SET next_drop_at=now()-interval '1 second' WHERE guild_id=$1", GUILD
+    )
+    drop = await repo.prepare_drop(GUILD, Language.ES)
+    async with repo.publication(drop.id) as (connection, current):
+        assert current is not None
+        disabling = asyncio.create_task(repo.set_enabled(GUILD, False, STAFF))
+        await asyncio.sleep(0.02)
+        assert not disabling.done()
+        await repo.bind_message(drop.id, 777, connection)
+    await disabling
+    assert (await repo.drop(drop.id)).status == DropStatus.OPEN
+    assert not (await repo.config(GUILD, Language.ES)).enabled
+    await repo.finish(drop.id)
+    assert (await repo.config(GUILD, Language.ES)).next_drop_at is None
