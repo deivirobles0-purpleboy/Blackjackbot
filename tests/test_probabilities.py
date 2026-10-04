@@ -225,6 +225,11 @@ async def test_schema_upgrade_preserves_legacy_scores_and_active_doors(repo):
     before = [dict(row) for row in await repo.ranking(GUILD, Language.ES)]
     await repo.pool.execute(
         "ALTER TABLE event_config DROP COLUMN win_percent; ALTER TABLE door_drops DROP COLUMN candy_win; "
+        "ALTER TABLE door_drops DROP COLUMN expires_at; ALTER TABLE door_drops DROP COLUMN delete_at; "
+        "ALTER TABLE door_drops DROP COLUMN deleted_at; "
+        "ALTER TABLE door_drops DROP CONSTRAINT door_drops_status_check; "
+        "ALTER TABLE door_drops ADD CONSTRAINT door_drops_status_check CHECK "
+        "(status IN ('publishing','open','processing','finished','cancelled')); "
         "ALTER TABLE door_winners DROP CONSTRAINT door_winners_candies_check; "
         "ALTER TABLE door_winners ADD CONSTRAINT door_winners_candies_check CHECK (candies BETWEEN 1 AND 5)"
     )

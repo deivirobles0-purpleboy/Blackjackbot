@@ -8,7 +8,7 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras integrar el regreso automático al menú: **121 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras corregir las fases públicas y los clics silenciosos: **146 pruebas aprobadas, ninguna omitida**.
 - ZIP: integridad, entrada `bot.py`, configuración y sintaxis de los fuentes comprobadas.
 
 La suite comprobó:
@@ -32,8 +32,21 @@ La suite comprobó:
 - Dos puertas concurrentes no sobregiran el mismo saldo; claims duplicados y reinicios no vuelven a descontar.
 - Rollback de pérdidas si falla guardar la participación; simulaciones mantienen saldos intactos.
 - Migración repetible desde el esquema anterior conserva puntuaciones y puertas activas.
+- Plazo de 6 segundos desde la publicación para el primer participante válido;
+  clics tardíos no cambian puntuaciones aunque el temporizador aún no haya editado Discord.
+- El primer clic válido cancela el plazo y conserva el segundo cupo; usuarios no registrados
+  no prolongan el tiempo. Carrera entre vencimiento y clics sin premios duplicados.
+- Puerta vencida: mensaje y respuesta efímera ES/BR, botón rojo informativo y borrado a los 10 segundos.
+- Resultado ganar/perder ES/BR: borrado a los 20 segundos, conservando saldos confirmados.
+- Plazos persistidos y recuperación del vencimiento antes de editar Discord, así como del borrado final.
+- Borrado idempotente; mensajes ya eliminados completan la limpieza y errores de permisos quedan pendientes.
+- El scheduler recupera puertas abiertas y borrados pendientes; los trabajos se arman al publicar y finalizar.
 - Variables de entorno independientes por idioma/fase; valores vacíos usan el predeterminado.
 - Tres fases ES y BR sobre el mismo Message ID con el GIF integrado y sin duplicar premios.
+- Clics del botón sin confirmaciones ni resultados efímeros para los dos participantes aceptados.
+- Flujo completo por botón en ES/BR, ganar/perder y prueba real/simulada: un único envío público,
+  mismo Message ID, GIF por fase y resultado final con título, descripción y footer correspondientes.
+- Espera de 4 segundos desde aceptar al segundo usuario, con cuenta original conservada tras reinicios.
 - URL de Puerta comprobada previamente mediante GET parcial: HTTP 206, `image/gif` y firma GIF válida.
 - 40 claims simultáneos: exactamente dos ganadores distintos y saldos coherentes.
 - Repetición del mismo claim sin duplicar premio.

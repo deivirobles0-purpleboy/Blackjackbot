@@ -18,6 +18,7 @@ class DropStatus(StrEnum):
     PROCESSING = "processing"
     FINISHED = "finished"
     CANCELLED = "cancelled"
+    EXPIRED = "expired"
 
 
 class ClaimStatus(StrEnum):
@@ -25,6 +26,7 @@ class ClaimStatus(StrEnum):
     DUPLICATE = "duplicate"
     CLOSED = "closed"
     UNREGISTERED = "unregistered"
+    EXPIRED = "expired"
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,9 @@ class DoorDrop:
     processing_at: datetime | None
     finished_at: datetime | None
     candy_win: bool = True
+    expires_at: datetime | None = None
+    delete_at: datetime | None = None
+    deleted_at: datetime | None = None
 
     @classmethod
     def from_record(cls, row: Mapping[str, Any]) -> DoorDrop:

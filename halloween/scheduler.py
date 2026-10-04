@@ -78,6 +78,7 @@ class Scheduler:
             key: value for key, value in self._open_checked.items() if key in live_ids
         }
         for drop in drops:
+            self.manager.schedule_expiration(drop)
             check_open = time.monotonic() - self._open_checked.get(drop.id, -100) >= 60
             if drop.status != DropStatus.OPEN or check_open:
                 self.manager.start_job(
@@ -85,6 +86,11 @@ class Scheduler:
                 )
                 if check_open:
                     self._open_checked[drop.id] = time.monotonic()
+        for drop in await self.bot.repo.pending_cleanup():
+            if drop.status == DropStatus.EXPIRED and drop.delete_at is None:
+                self.manager.start_job(str(drop.id), self.manager.run_drop(drop.id))
+            else:
+                self.manager.schedule_deletion(drop)
         now = datetime.now(timezone.utc)
         for cfg in await self.bot.repo.enabled_configs():
             if not cfg.complete:

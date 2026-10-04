@@ -253,19 +253,38 @@ en su canal original.
    de saldo se guardan en una misma transacción, sin esperar al segundo usuario.
 4. Al aceptar el segundo, el estado interno se cierra a más claims. Se edita **el
    mismo mensaje** a espera, con botón rojo desactivado y segundo GIF.
-5. Después de 2,5 segundos se vuelve a editar **ese mismo Message ID** para mostrar
+5. A los 4 segundos desde aceptar al segundo usuario, se vuelve a editar **ese mismo Message ID** para mostrar
    participantes y el GIF de ganar o perder, eliminando el botón. El embed de derrota
    muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
    conservan el footer del top correspondiente al idioma. Se programa el siguiente drop.
+
+El clic aceptado se confirma silenciosamente: no se envía un resultado ni una
+confirmación de recompensa efímera. Puerta cerrada, espera y resultado se muestran
+editando el mismo embed público con su GIF correspondiente. Los avisos de falta de
+registro, clic duplicado, puerta cerrada o vencida sí son privados.
 
 Un cambio de probabilidades afecta a las nuevas puertas. Las ya creadas conservan
 su resultado, incluso tras reinicios. El top consulta los saldos confirmados en
 PostgreSQL y refleja premios y descuentos en la siguiente consulta.
 
-Una puerta espera hasta reunir dos participantes válidos: no se añadió una caducidad
-que el prompt no especifica. Desactivar cancela timers y puertas aún no publicadas;
-las puertas publicadas permiten completar la participación, pero no programan otra
-mientras el idioma esté desactivado. El campo Última Puerta corresponde a la fecha
+Desde su publicación, una puerta admite el primer clic válido durante **6 segundos**.
+Si nadie registrado abre a tiempo, vence sin premios ni descuentos y se programa
+la siguiente aparición automática. El botón pasa a rojo y solo responde en privado
+`Puerta Vencida, espera la proxima...` (ES) o `Porta expirou, aguarde pela proxima...`
+(BR). Discord no envía interacciones de botones deshabilitados: este botón conserva
+el clic exclusivamente para informar del vencimiento y no admite participantes.
+El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
+
+Si el primer usuario válido abre dentro del plazo, se cancela el vencimiento y la
+puerta sigue esperando al segundo participante. El resultado final, tanto al ganar
+como al perder, se elimina **20 segundos después de publicarse**. Los plazos y el
+estado del borrado se guardan en PostgreSQL y se recuperan al reiniciar, conservando
+las puntuaciones. Los borrados pendientes de mensajes ya finalizados se recuperan
+sin volver a repartir ni descontar dulces.
+
+Desactivar cancela timers y puertas aún no publicadas; las puertas publicadas
+mantienen estas reglas, pero no programan otra mientras el idioma esté desactivado.
+El campo Última Puerta corresponde a la fecha
 de creación del último drop automático publicado, no a pruebas ni consultas de Estado.
 
 Las puertas de prueba utilizan el mismo servicio, componentes y transacciones. Por

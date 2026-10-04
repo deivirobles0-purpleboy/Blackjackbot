@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 import random
 from contextlib import asynccontextmanager
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import asyncpg
 
-from config.constants import MAX_WINNERS
+from config.constants import DOOR_OPEN_SECONDS, EXPIRED_DELETE_SECONDS, MAX_WINNERS
 from halloween.models import (
     ClaimResult,
     ClaimStatus,
@@ -239,6 +240,51 @@ class Repository:
         )
         return [DoorDrop.from_record(row) for row in rows]
 
+    async def pending_cleanup(self) -> list[DoorDrop]:
+        rows = await self.pool.fetch(
+            "SELECT * FROM door_drops WHERE message_id IS NOT NULL AND deleted_at IS NULL "
+            "AND (status='expired' OR delete_at IS NOT NULL) ORDER BY delete_at NULLS FIRST"
+        )
+        return [DoorDrop.from_record(row) for row in rows]
+
+    async def expire_unopened(self, drop_id: UUID) -> DoorDrop | None:
+        async with self.pool.acquire() as con, con.transaction():
+            row = await con.fetchrow("SELECT * FROM door_drops WHERE id=$1", drop_id)
+            if not row:
+                return None
+            # Match publication/finish lock order to avoid racing configuration changes.
+            await con.fetchrow(
+                "SELECT guild_id FROM event_config WHERE guild_id=$1 AND language=$2 FOR UPDATE",
+                row["guild_id"],
+                row["language"],
+            )
+            expired = await con.fetchrow(
+                "UPDATE door_drops SET status='expired',finished_at=clock_timestamp() "
+                "WHERE id=$1 AND status='open' AND expires_at<=clock_timestamp() "
+                "AND NOT EXISTS (SELECT 1 FROM door_winners WHERE drop_id=$1) RETURNING *",
+                drop_id,
+            )
+            if expired and not expired["is_test"]:
+                await self._schedule_if_idle(
+                    con, expired["guild_id"], Language(expired["language"])
+                )
+            return DoorDrop.from_record(expired) if expired else None
+
+    async def mark_expired_displayed(self, drop_id: UUID) -> DoorDrop:
+        row = await self.pool.fetchrow(
+            "UPDATE door_drops SET delete_at=coalesce(delete_at,clock_timestamp()+"
+            "$2::integer * interval '1 second') WHERE id=$1 AND status='expired' RETURNING *",
+            drop_id,
+            EXPIRED_DELETE_SECONDS,
+        )
+        return DoorDrop.from_record(row)
+
+    async def mark_deleted(self, drop_id: UUID) -> None:
+        await self.pool.execute(
+            "UPDATE door_drops SET deleted_at=coalesce(deleted_at,clock_timestamp()) WHERE id=$1",
+            drop_id,
+        )
+
     @asynccontextmanager
     async def publication(self, drop_id: UUID):
         async with self.pool.acquire() as con, con.transaction():
@@ -259,18 +305,26 @@ class Repository:
             yield con, DoorDrop.from_record(drop)
 
     async def bind_message(
-        self, drop_id: UUID, message_id: int, connection: asyncpg.Connection | None = None
+        self,
+        drop_id: UUID,
+        message_id: int,
+        connection: asyncpg.Connection | None = None,
+        *,
+        published_at: datetime | None = None,
     ) -> None:
         if connection is None:
             async with self.publication(drop_id) as (con, drop):
                 if drop:
-                    await self.bind_message(drop_id, message_id, con)
+                    await self.bind_message(drop_id, message_id, con, published_at=published_at)
             return
         result = await connection.fetchrow(
-            "UPDATE door_drops SET message_id=$2,status='open' "
+            "UPDATE door_drops SET message_id=$2,status='open', "
+            "expires_at=coalesce($3::timestamptz,clock_timestamp())+$4::integer * interval '1 second' "
             "WHERE id=$1 AND status='publishing' RETURNING *",
             drop_id,
             message_id,
+            published_at,
+            DOOR_OPEN_SECONDS,
         )
         if result and not result["is_test"]:
             await connection.execute(
@@ -292,8 +346,6 @@ class Repository:
         message_id: int,
         language: Language,
     ) -> ClaimResult:
-        if not eligible:
-            return ClaimResult(ClaimStatus.UNREGISTERED)
         async with self.pool.acquire() as con, con.transaction():
             row = await con.fetchrow("SELECT * FROM door_drops WHERE id=$1 FOR UPDATE", drop_id)
             if (
@@ -304,6 +356,14 @@ class Repository:
                 or row["language"] != language
             ):
                 return ClaimResult(ClaimStatus.CLOSED)
+            if row["status"] == "expired":
+                return ClaimResult(ClaimStatus.EXPIRED)
+            if row["status"] == "open" and row["expires_at"] is not None:
+                now = await con.fetchval("SELECT clock_timestamp()")
+                if now >= row["expires_at"]:
+                    return ClaimResult(ClaimStatus.EXPIRED)
+            if not eligible:
+                return ClaimResult(ClaimStatus.UNREGISTERED)
             if await con.fetchval(
                 "SELECT EXISTS(SELECT 1 FROM door_winners WHERE drop_id=$1 AND user_id=$2)",
                 drop_id,
@@ -350,9 +410,11 @@ class Repository:
                 count + 1,
                 candies,
             )
+            if count == 0:
+                await con.execute("UPDATE door_drops SET expires_at=NULL WHERE id=$1", drop_id)
             if count + 1 == MAX_WINNERS:
                 await con.execute(
-                    "UPDATE door_drops SET status='processing',processing_at=now() WHERE id=$1",
+                    "UPDATE door_drops SET status='processing',processing_at=clock_timestamp() WHERE id=$1",
                     drop_id,
                 )
             return ClaimResult(ClaimStatus.ACCEPTED, candies, count + 1)
@@ -362,7 +424,9 @@ class Repository:
             "SELECT user_id,candies,slot FROM door_winners WHERE drop_id=$1 ORDER BY slot", drop_id
         )
 
-    async def finish(self, drop_id: UUID, *, cancelled: bool = False) -> None:
+    async def finish(
+        self, drop_id: UUID, *, cancelled: bool = False, delete_after: int | None = None
+    ) -> None:
         async with self.pool.acquire() as con, con.transaction():
             row = await con.fetchrow("SELECT * FROM door_drops WHERE id=$1", drop_id)
             if not row:
@@ -373,10 +437,13 @@ class Repository:
                 row["language"],
             )
             updated = await con.fetchrow(
-                "UPDATE door_drops SET status=$2,finished_at=now() "
+                "UPDATE door_drops SET status=$2,finished_at=now(), "
+                "delete_at=CASE WHEN $3::integer IS NULL THEN delete_at "
+                "ELSE clock_timestamp()+$3::integer * interval '1 second' END "
                 "WHERE id=$1 AND status IN ('publishing','open','processing') RETURNING *",
                 drop_id,
                 "cancelled" if cancelled else "finished",
+                delete_after,
             )
             if updated and not updated["is_test"]:
                 await self._schedule_if_idle(

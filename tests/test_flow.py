@@ -19,10 +19,14 @@ class FakeMessage:
         self.components = [SimpleNamespace(children=[SimpleNamespace(custom_id=custom_id)])]
         self.edits = []
         self.embed = embed
+        self.deletes = 0
 
     async def edit(self, **kwargs):
         self.edits.append(kwargs)
         return self
+
+    async def delete(self):
+        self.deletes += 1
 
 
 class FakeChannel:
@@ -49,7 +53,7 @@ class FakeChannel:
         return self.messages[message_id]
 
 
-def manager(repo, channel):
+def manager(repo, channel, *, schedule_timers=False):
     settings = Settings(
         "test",
         "postgresql://test@localhost/test?sslmode=require",
@@ -59,6 +63,12 @@ def manager(repo, channel):
     mgr = DoorManager(bot)
     mgr.leader.set()
     mgr._channel = AsyncMock(return_value=channel)
+    if not schedule_timers:
+        # These tests drive each stage explicitly; timer execution has separate tests.
+        def discard_job(key, work):
+            work.close()
+
+        mgr.start_job = discard_job
     return mgr
 
 
@@ -105,6 +115,16 @@ async def test_three_phases_same_message_and_processing_recovery(
             "Que mal! Truco..." if language == Language.ES else "Foi mal! Travessuras..."
         )
     assert (await repo.drop(drop.id)).status == DropStatus.FINISHED
+    finished = await repo.drop(drop.id)
+    assert 19 <= (finished.delete_at - finished.finished_at).total_seconds() <= 21
+    assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
+    await repo.pool.execute(
+        "UPDATE door_drops SET delete_at=now()-interval '1 second' WHERE id=$1", drop.id
+    )
+    await restarted.delete_drop_message(drop.id)
+    await restarted.delete_drop_message(drop.id)
+    assert message.deletes == 1
+    assert (await repo.drop(drop.id)).deleted_at is not None
     assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
 
 

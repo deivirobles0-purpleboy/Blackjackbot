@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS door_drops (
     channel_id BIGINT NOT NULL,
     message_id BIGINT UNIQUE,
     status TEXT NOT NULL CHECK (status IN ('publishing', 'open', 'processing',
-                                         'finished', 'cancelled')),
+                                         'finished', 'cancelled', 'expired')),
     is_test BOOLEAN NOT NULL DEFAULT FALSE,
     rewards_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -72,4 +72,15 @@ ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS candy_win BOOLEAN NOT NULL DEFAU
 ALTER TABLE door_winners DROP CONSTRAINT IF EXISTS door_winners_candies_check;
 ALTER TABLE door_winners ADD CONSTRAINT door_winners_candies_check
     CHECK (candies BETWEEN -5 AND 5);
+ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS delete_at TIMESTAMPTZ;
+ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE door_drops DROP CONSTRAINT IF EXISTS door_drops_status_check;
+ALTER TABLE door_drops ADD CONSTRAINT door_drops_status_check CHECK
+    (status IN ('publishing','open','processing','finished','cancelled','expired'));
+UPDATE door_drops SET expires_at=now()+interval '6 seconds'
+    WHERE status='open' AND expires_at IS NULL
+    AND NOT EXISTS (SELECT 1 FROM door_winners WHERE drop_id=door_drops.id);
+CREATE INDEX IF NOT EXISTS pending_door_deletion ON door_drops (delete_at)
+    WHERE delete_at IS NOT NULL AND deleted_at IS NULL;
 """

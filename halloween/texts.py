@@ -17,8 +17,6 @@ class Texts:
     not_registered: str
     duplicate: str
     unavailable: str
-    accepted: str
-    accepted_loss: str
     cooldown: str
     empty_ranking: str
     settings_title: str
@@ -30,6 +28,7 @@ class Texts:
     lose_label: str
     invalid_probabilities: str
     probabilities_saved: str
+    expired: str
 
 
 TEXTS = {
@@ -46,8 +45,6 @@ TEXTS = {
         f"Ingresa en <#{REGISTRATION_CHANNEL_IDS['ES']}> y registrate",
         duplicate="Ya participaste en esta puerta.",
         unavailable="Esta puerta ya no admite participantes o todavía se está preparando.",
-        accepted="Tu participación quedó registrada. Recompensa: {amount} Dulces.",
-        accepted_loss="Tu participación quedó registrada. El Gatico Momia se llevó {amount} Dulces.",
         cooldown="Espera {seconds} segundos más para revisar el Top nuevamente!",
         empty_ranking="Todavía no hay dulces registrados.",
         settings_title="Ajustes Dulce o Truco",
@@ -59,6 +56,7 @@ TEXTS = {
         lose_label="%perder",
         invalid_probabilities="Introduce porcentajes enteros entre 0 y 100 que sumen 100%.",
         probabilities_saved="Probabilidad guardada: {win}% ganar / {lose}% perder. Se aplica a las nuevas puertas.",
+        expired="Puerta Vencida, espera la proxima...",
     ),
     Language.BR: Texts(
         title="Doces ou Travessuras ?",
@@ -73,8 +71,6 @@ TEXTS = {
         f"Acesse ao <#{REGISTRATION_CHANNEL_IDS['BR']}> e registre-se.",
         duplicate="Você já participou desta porta.",
         unavailable="Esta porta não aceita mais participantes ou ainda está sendo preparada.",
-        accepted="Sua participação foi registrada. Recompensa: {amount} Doces.",
-        accepted_loss="Sua participação foi registrada. O Gatinho Múmia levou {amount} Doces.",
         cooldown="Espera mais {seconds} segundos para conferir o Top!",
         empty_ranking="Ainda não há doces registrados.",
         settings_title="Configurações Doces ou Travessuras",
@@ -86,5 +82,6 @@ TEXTS = {
         lose_label="%perder",
         invalid_probabilities="Informe porcentagens inteiras entre 0 e 100 que somem 100%.",
         probabilities_saved="Probabilidade salva: {win}% ganhar / {lose}% perder. Aplica-se às novas portas.",
+        expired="Porta expirou, aguarde pela proxima...",
     ),
 }
