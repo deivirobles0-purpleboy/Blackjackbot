@@ -226,6 +226,9 @@ saldos y los timers del evento sí permanecen en PostgreSQL.
 7. Ejecuta `/ativar_doces`. Solo se activan idiomas completos; se informa cuáles faltan.
 
 El panel tiene 10 minutos de duración y solo lo puede operar el Staff que lo abrió.
+Al guardar Canal, CD o Probabilidad, el mismo embed vuelve automáticamente al menú
+principal con los botones Español y Português. Los valores inválidos o un error
+al guardar mantienen la pantalla de configuración para volver a intentarlo.
 Si caduca, vuelve a usar el comando. Los botones públicos de registro y puerta
 permanecen persistentes.
 

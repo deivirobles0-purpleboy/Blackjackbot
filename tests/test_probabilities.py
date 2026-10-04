@@ -60,6 +60,7 @@ async def test_probability_modal_labels_validation_permissions_and_save(monkeypa
             send_modal=AsyncMock(), send_message=AsyncMock(), defer=AsyncMock()
         ),
         followup=SimpleNamespace(send=AsyncMock()),
+        edit_original_response=AsyncMock(),
     )
     await panel.probability.callback(interaction)
     modal = interaction.response.send_modal.call_args.args[0]

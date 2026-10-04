@@ -15,6 +15,17 @@ from utils.permissions import panel_allowed, staff_only
 log = logging.getLogger(__name__)
 
 
+def main_menu_embed() -> discord.Embed:
+    return discord.Embed(title="🎃 Configuración / Configuração Halloween", color=0xF28C28)
+
+
+async def return_to_main_menu(interaction: discord.Interaction, bot, owner_id: int) -> None:
+    # A deferred message update keeps edits on the original ephemeral panel.
+    await interaction.edit_original_response(
+        content=None, embed=main_menu_embed(), view=ConfigurationPanel(bot, owner_id)
+    )
+
+
 class StaffView(SafeView):
     def __init__(self, bot, owner_id: int) -> None:
         super().__init__(timeout=600)
@@ -36,7 +47,7 @@ class ChannelPicker(discord.ui.ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         view = self.view
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer()
         channel = self.values[0]
         await view.bot.repo.set_channel(
             interaction.guild_id, view.language, channel.id, interaction.user.id
@@ -48,6 +59,7 @@ class ChannelPicker(discord.ui.ChannelSelect):
             channel.id,
             interaction.user.id,
         )
+        await return_to_main_menu(interaction, view.bot, view.owner_id)
         await interaction.followup.send(
             f"Canal de drops configurado: <#{channel.id}>", ephemeral=True
         )
@@ -94,7 +106,7 @@ class MinutesModal(SafeModal):
                 TEXTS[self.language].invalid_minutes, ephemeral=True
             )
             return
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer()
         await self.bot.repo.set_minutes(
             interaction.guild_id, self.language, minimum, maximum, interaction.user.id
         )
@@ -106,6 +118,7 @@ class MinutesModal(SafeModal):
             maximum,
             interaction.user.id,
         )
+        await return_to_main_menu(interaction, self.bot, self.owner_id)
         await interaction.followup.send(
             f"{self.language.value}: CD = {minimum}–{maximum} minutos.", ephemeral=True
         )
@@ -133,7 +146,7 @@ class ProbabilityModal(SafeModal):
         except ValueError:
             await interaction.response.send_message(text.invalid_probabilities, ephemeral=True)
             return
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer()
         await self.bot.repo.set_probabilities(
             interaction.guild_id, self.language, win, lose, interaction.user.id
         )
@@ -145,6 +158,7 @@ class ProbabilityModal(SafeModal):
             lose,
             interaction.user.id,
         )
+        await return_to_main_menu(interaction, self.bot, self.owner_id)
         await interaction.followup.send(
             text.probabilities_saved.format(win=win, lose=lose), ephemeral=True
         )
@@ -159,10 +173,10 @@ class LanguagePanel(StaffView):
 
     @discord.ui.button(label="Canal", style=discord.ButtonStyle.primary)
     async def channel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.send_message(
-            "Selecciona / Selecione o canal:",
+        await interaction.response.edit_message(
+            content="Selecciona / Selecione o canal:",
+            embed=None,
             view=ChannelView(self.bot, self.owner_id, self.language),
-            ephemeral=True,
         )
 
     @discord.ui.button(label="CD puertas", style=discord.ButtonStyle.primary)
@@ -214,7 +228,7 @@ class Configuration(commands.Cog):
     @staff_only()
     async def configure(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
-            embed=discord.Embed(title="🎃 Configuración / Configuração Halloween", color=0xF28C28),
+            embed=main_menu_embed(),
             view=ConfigurationPanel(self.bot, interaction.user.id),
             ephemeral=True,
         )

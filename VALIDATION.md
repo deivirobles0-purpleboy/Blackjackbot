@@ -8,7 +8,7 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras integrar probabilidades y derrotas ES/BR: **105 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras integrar el regreso automático al menú: **121 pruebas aprobadas, ninguna omitida**.
 - ZIP: integridad, entrada `bot.py`, configuración y sintaxis de los fuentes comprobadas.
 
 La suite comprobó:
@@ -25,6 +25,8 @@ La suite comprobó:
 - Porcentajes enteros entre 0 y 100 que suman 100; valores predeterminados 100/0 por idioma.
 - Límites exactos de sorteo (0%, 1%, 37%, 99%, 100%) y pérdidas de 2 a 5.
 - Botones y modales localizados; validación y revalidación de permisos Staff antes de guardar.
+- Guardar Canal, CD o Probabilidad vuelve al menú principal en el mismo mensaje privado ES/BR;
+  datos inválidos y fallos al guardar conservan la pantalla para reintentar.
 - Un resultado común persistido por puerta y descuentos individuales; nuevas probabilidades afectan nuevas puertas.
 - Pérdidas limitadas al saldo disponible, incluido cero, y actualización inmediata del ranking.
 - Dos puertas concurrentes no sobregiran el mismo saldo; claims duplicados y reinicios no vuelven a descontar.
