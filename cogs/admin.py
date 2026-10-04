@@ -147,10 +147,11 @@ class Admin(commands.Cog):
         log.info(
             "Puerta prueba admin=%s drop=%s real=%s", interaction.user.id, drop.id, recompensa_real
         )
-        await interaction.followup.send(
-            f"Puerta {idioma.value}: https://discord.com/channels/{drop.guild_id}/{drop.channel_id}/{drop.message_id}",
-            ephemeral=True,
-        )
+        # Acknowledge the slash command, then remove its temporary loading response.
+        try:
+            await interaction.delete_original_response()
+        except discord.NotFound:
+            pass
 
 
 async def setup(bot) -> None:

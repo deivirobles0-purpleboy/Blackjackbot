@@ -78,7 +78,7 @@ async def test_button_flow_reveals_only_in_original_public_embed(
     assert processing.status == DropStatus.PROCESSING
     mgr._wait_until = AsyncMock()
     await mgr.run_drop(drop.id)
-    mgr._wait_until.assert_awaited_once_with(processing.processing_at + timedelta(seconds=4))
+    mgr._wait_until.assert_awaited_once_with(processing.processing_at + timedelta(seconds=5))
     assert channel.sends == 1
     assert list(channel.messages) == [original_id]
     assert (await repo.drop(drop.id)).message_id == original_id
@@ -127,4 +127,4 @@ async def test_result_countdown_uses_first_click_timestamp_without_reset(restart
     mgr = manager(None, FakeChannel())
     mgr._wait_until = AsyncMock()
     await mgr._wait_for_result(drop)
-    mgr._wait_until.assert_awaited_once_with(started + timedelta(seconds=4))
+    mgr._wait_until.assert_awaited_once_with(started + timedelta(seconds=5))

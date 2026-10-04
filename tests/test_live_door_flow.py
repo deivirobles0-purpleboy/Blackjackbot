@@ -1,5 +1,6 @@
 import asyncio
 import time
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -60,6 +61,17 @@ async def test_live_first_click_progresses_without_manual_run_or_fake_timers(
         await mgr.run_drop(drop.id)  # Only the initial publication is driven explicitly.
         drop = await repo.drop(drop.id)
         message = channel.messages[drop.message_id]
+        final_displayed_at = None
+        original_edit = message.edit
+
+        async def record_edit(**kwargs):
+            nonlocal final_displayed_at
+            result = await original_edit(**kwargs)
+            if kwargs.get("embed") and kwargs.get("view", True) is None:
+                final_displayed_at = datetime.now(timezone.utc)
+            return result
+
+        message.edit = record_edit
 
         async def pending_open_check():
             await asyncio.Event().wait()
@@ -78,11 +90,11 @@ async def test_live_first_click_progresses_without_manual_run_or_fake_timers(
         if participants == 2:
             second = await click(mgr, message, drop, 12)
             second.followup.send.assert_not_awaited()
-        async with asyncio.timeout(5):
+        async with asyncio.timeout(6):
             while (await repo.drop(drop.id)).status != DropStatus.FINISHED:
                 await asyncio.sleep(0.03)
         elapsed = time.monotonic() - started
-        assert 3.8 <= elapsed < 5.5
+        assert 4.8 <= elapsed < 6.5
         final = [edit["embed"] for edit in message.edits if edit.get("embed")][-1]
         assert final.image.url == getattr(
             DEFAULT_DOOR_IMAGES[language], "candy_win" if candy_win else "candy_lose"
@@ -93,13 +105,16 @@ async def test_live_first_click_progresses_without_manual_run_or_fake_timers(
         assert channel.sends == 1
         assert list(channel.messages) == [drop.message_id]
         assert len(await repo.winners(drop.id)) == participants
-        assert (await repo.drop(drop.id)).delete_at is not None
+        finished = await repo.drop(drop.id)
+        assert final_displayed_at is not None
+        assert 20 <= (finished.delete_at - final_displayed_at).total_seconds() < 21
+        assert message.deletes == 0
     finally:
         await mgr.stop_jobs()
 
 
 @pytest.mark.postgres
-async def test_second_participant_does_not_restart_four_second_deadline(repo):
+async def test_second_participant_does_not_restart_five_second_deadline(repo):
     from tests.test_postgres import claim, door
 
     drop = await door(repo)
@@ -118,12 +133,28 @@ async def test_late_second_click_is_rejected_even_when_result_job_is_delayed(rep
     drop = await door(repo)
     first = await claim(repo, drop, 11)
     await repo.pool.execute(
-        "UPDATE door_drops SET processing_at=clock_timestamp()-interval '4 seconds' WHERE id=$1",
+        "UPDATE door_drops SET processing_at=clock_timestamp()-interval '5 seconds' WHERE id=$1",
         drop.id,
     )
     assert (await claim(repo, drop, 12)).status == ClaimStatus.CLOSED
     assert [row["user_id"] for row in await repo.winners(drop.id)] == [11]
     assert (await repo.ranking(GUILD, Language.ES))[0]["candies"] == first.candies
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("language", list(Language))
+async def test_second_click_after_four_seconds_is_still_accepted(repo, language):
+    from halloween.models import ClaimStatus
+    from tests.test_postgres import claim, door
+
+    drop = await door(repo, language)
+    await claim(repo, drop, 11)
+    await repo.pool.execute(
+        "UPDATE door_drops SET processing_at=clock_timestamp()-interval '4.1 seconds' WHERE id=$1",
+        drop.id,
+    )
+    assert (await claim(repo, drop, 12)).status == ClaimStatus.ACCEPTED
+    assert len(await repo.winners(drop.id)) == 2
 
 
 @pytest.mark.postgres

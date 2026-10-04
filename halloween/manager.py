@@ -80,7 +80,7 @@ class DoorManager:
         await asyncio.sleep(delay)
 
     async def _wait_for_result(self, drop: DoorDrop) -> None:
-        # Continue the first participant's four-second countdown after a restart.
+        # Continue the first participant's countdown after a restart.
         started = drop.processing_at or datetime.now(timezone.utc)
         await self._wait_until(started + timedelta(seconds=RESULT_REVEAL_SECONDS))
 
@@ -302,6 +302,7 @@ class DoorManager:
                     await self.repo.suspend(drop.guild_id, drop.language)
                 await self.repo.finish(drop.id, cancelled=True)
                 return
+            # Start the deletion countdown only after Discord accepts the final result.
             await self.repo.finish(drop.id, delete_after=RESULT_DELETE_SECONDS)
             self.schedule_deletion(await self.repo.drop(drop.id))
             log.info("Puerta finalizada id=%s ganadores=%s", drop.id, [dict(w) for w in winners])

@@ -83,7 +83,7 @@ UPDATE door_drops SET status='processing',expires_at=NULL,
     processing_at=coalesce(processing_at,
         (SELECT min(claimed_at) FROM door_winners WHERE drop_id=door_drops.id))
     WHERE status='open' AND EXISTS (SELECT 1 FROM door_winners WHERE drop_id=door_drops.id);
-UPDATE door_drops SET expires_at=now()+interval '6 seconds'
+UPDATE door_drops SET expires_at=now()+interval '5 seconds'
     WHERE status='open' AND expires_at IS NULL
     AND NOT EXISTS (SELECT 1 FROM door_winners WHERE drop_id=door_drops.id);
 CREATE INDEX IF NOT EXISTS pending_door_deletion ON door_drops (delete_at)

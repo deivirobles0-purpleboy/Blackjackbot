@@ -16,17 +16,20 @@ class DoorImages:
     waiting: str = ""
     candy_win: str = ""
     candy_lose: str = ""
+    timeout: str = ""
 
 
 DEFAULT_DOOR_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif"
 DEFAULT_CANDY_WIN_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesGIF.gif"
 DEFAULT_CANDY_LOSE_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaGIF.gif"
+DEFAULT_DOOR_TIMEOUT_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png"
 DEFAULT_DOOR_IMAGES = {
     language: DoorImages(
         closed=DEFAULT_DOOR_GIF_URL,
         waiting=DEFAULT_DOOR_GIF_URL,
         candy_win=DEFAULT_CANDY_WIN_GIF_URL,
         candy_lose=DEFAULT_CANDY_LOSE_GIF_URL,
+        timeout=DEFAULT_DOOR_TIMEOUT_URL,
     )
     for language in Language
 }
@@ -67,8 +70,9 @@ class Settings:
         images = {}
         for language in Language:
             values = {}
-            for phase in ("closed", "waiting", "candy_win", "candy_lose"):
-                name = f"{language.value}_DOOR_{phase.upper()}_GIF"
+            for phase in ("closed", "waiting", "candy_win", "candy_lose", "timeout"):
+                suffix = "TIMEOUT" if phase == "timeout" else f"{phase.upper()}_GIF"
+                name = f"{language.value}_DOOR_{suffix}"
                 value = os.getenv(name, "").strip()
                 # Keep existing deployments working while RESULT is renamed to CANDY_WIN.
                 if phase == "candy_win" and not value:

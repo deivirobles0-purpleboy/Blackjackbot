@@ -22,15 +22,15 @@ def log_gifs(bot: HalloweenBot) -> bool:
     counts = {
         language: sum(
             bool(getattr(images, phase))
-            for phase in ("closed", "waiting", "candy_win", "candy_lose")
+            for phase in ("closed", "waiting", "candy_win", "candy_lose", "timeout")
         )
         for language, images in bot.settings.images.items()
     }
-    if all(counts.get(language) == 4 for language in Language):
-        log.info("✅ GIFs configurados: ES 4/4 | BR 4/4")
+    if all(counts.get(language) == 5 for language in Language):
+        log.info("✅ Imágenes configuradas: ES 5/5 | BR 5/5")
         return True
     log.warning(
-        "GIFs incompletos: ES %s/4 | BR %s/4",
+        "Imágenes incompletas: ES %s/5 | BR %s/5",
         counts.get(Language.ES, 0),
         counts.get(Language.BR, 0),
     )
@@ -94,7 +94,7 @@ async def log_ready_status(bot: HalloweenBot) -> None:
     if any(
         not getattr(bot.settings.images[language], phase)
         for language in Language
-        for phase in ("closed", "waiting", "candy_win", "candy_lose")
+        for phase in ("closed", "waiting", "candy_win", "candy_lose", "timeout")
     ):
         issues.append("Faltan recursos gráficos")
     guilds = list(bot.guilds)

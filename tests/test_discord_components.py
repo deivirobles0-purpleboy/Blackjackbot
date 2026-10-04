@@ -30,7 +30,7 @@ def settings():
             language: DoorImages(
                 **{
                     phase: f"https://example.com/{language.value}/{phase}.gif"
-                    for phase in ("closed", "waiting", "candy_win", "candy_lose")
+                    for phase in ("closed", "waiting", "candy_win", "candy_lose", "timeout")
                 }
             )
             for language in Language
@@ -109,9 +109,9 @@ def test_gifs_language_phase_and_exact_embeds():
             None,
             None,
         )
-        for phase in ("closed", "waiting", "result"):
+        for phase in ("closed", "waiting", "result", "expired"):
             embed = door_embed(drop, phase, settings(), [{"user_id": 123, "candies": 4}])
-            image_phase = "candy_win" if phase == "result" else phase
+            image_phase = {"result": "candy_win", "expired": "timeout"}.get(phase, phase)
             assert embed.image.url == f"https://example.com/{language.value}/{image_phase}.gif"
             if phase == "result":
                 assert "<@123>: 4" in embed.description

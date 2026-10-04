@@ -88,23 +88,26 @@ y [Views persistentes del proyecto discord.py](https://github.com/Rapptz/discord
 | `ES_DOOR_WAITING_GIF` | Animación de espera ES |
 | `ES_DOOR_CANDY_WIN_GIF` | Ganar dulces ES |
 | `ES_DOOR_CANDY_LOSE_GIF` | Perder dulces ES |
+| `ES_DOOR_TIMEOUT` | Imagen de puerta vencida ES |
 | `BR_DOOR_CLOSED_GIF` | Puerta cerrada BR |
 | `BR_DOOR_WAITING_GIF` | Animación de espera BR |
 | `BR_DOOR_CANDY_WIN_GIF` | Ganhar doces BR |
 | `BR_DOOR_CANDY_LOSE_GIF` | Perder doces BR |
+| `BR_DOOR_TIMEOUT` | Imagen de puerta vencida BR |
 | `DATABASE_CA_FILE` | Opcional: ruta al certificado CA de Aiven |
 | `DATABASE_CA_PEM` | Opcional: contenido PEM de la CA, admite saltos `\n` |
 | `COMMAND_GUILD_ID` | Opcional: servidor de sincronización para desarrollo |
 | `LOG_LEVEL` | Opcional: `INFO` por defecto |
 
-Los GIFs ya tienen valores predeterminados incluidos en `config/settings.py`
+Las imágenes ya tienen valores predeterminados incluidos en `config/settings.py`
 para ambos idiomas:
 
 - Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif`.
 - Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesGIF.gif`.
 - Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaGIF.gif`.
+- Puerta vencida ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png`.
 
-No necesitas configurar las ocho variables para mostrar imágenes. Si una variable
+No necesitas configurar las diez variables para mostrar imágenes. Si una variable
 está ausente o vacía, se utiliza el valor predeterminado; una URL HTTPS en esa
 variable sustituye únicamente la fase e idioma correspondientes. Reinicia el bot
 después de cambiar las variables.
@@ -198,7 +201,7 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 | `/resetar_doces user idioma` | Poner saldo a cero | Privada |
 | `/adicionar_doces user quantidade idioma` | Agregar cantidad positiva | Pública |
 | `/tirar_doces user quantidade idioma` | Restar sin bajar de cero | Pública |
-| `/porta_de_teste canal idioma recompensa_real` | Puerta de prueba aislada | Confirmación privada; puerta pública |
+| `/porta_de_teste canal idioma recompensa_real` | Puerta de prueba aislada | Solo puerta pública; sin confirmación privada ni enlace al mensaje |
 
 Los cambios manuales, activaciones y ajustes quedan registrados en `admin_logs`,
 incluido el ID del responsable. Las cantidades se modifican atómicamente.
@@ -251,10 +254,10 @@ en su canal original.
    1–5 dulces. En una derrota, cada usuario pierde una cantidad aleatoria independiente
    de 2–5 dulces, limitada por su saldo: nunca baja de cero. Participación y cambio
    de saldo se guardan en una misma transacción, sin esperar al segundo usuario.
-4. El primer clic válido inicia una ventana de 4 segundos y edita **el mismo mensaje**
+4. El primer clic válido inicia una ventana de 5 segundos y edita **el mismo mensaje**
    a espera con su GIF. El botón permite entrar a un segundo usuario durante ese
    plazo. Al completar los dos cupos pasa a rojo desactivado.
-5. A los 4 segundos desde aceptar al primer usuario, se vuelve a editar **ese mismo Message ID** para mostrar
+5. A los 5 segundos desde aceptar al primer usuario, se vuelve a editar **ese mismo Message ID** para mostrar
    participantes y el GIF de ganar o perder, eliminando el botón. El embed de derrota
    muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
    conservan el footer del top correspondiente al idioma. El resultado se publica
@@ -270,7 +273,7 @@ Un cambio de probabilidades afecta a las nuevas puertas. Las ya creadas conserva
 su resultado, incluso tras reinicios. El top consulta los saldos confirmados en
 PostgreSQL y refleja premios y descuentos en la siguiente consulta.
 
-Desde su publicación, una puerta admite el primer clic válido durante **6 segundos**.
+Desde su publicación, una puerta admite el primer clic válido durante **5 segundos**.
 Si nadie registrado abre a tiempo, vence sin premios ni descuentos y se programa
 la siguiente aparición automática. El botón pasa a rojo y solo responde en privado
 `Puerta Vencida, espera la proxima...` (ES) o `Porta expirou, aguarde pela proxima...`
@@ -279,7 +282,7 @@ el clic exclusivamente para informar del vencimiento y no admite participantes.
 El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
 
 Si el primer usuario válido abre dentro del plazo, se cancela el vencimiento y la
-puerta admite un segundo participante durante los 4 segundos siguientes. Su clic
+puerta admite un segundo participante durante los 5 segundos siguientes. Su clic
 no reinicia el contador. Clics después del plazo se rechazan aunque la publicación
 del resultado sufra un retraso de conexión. El resultado final, tanto al ganar
 como al perder, se elimina **20 segundos después de publicarse**. Los plazos y el
@@ -300,7 +303,7 @@ el timer ni la fecha de última puerta del sistema automático.
 ## Concurrencia, recuperación y errores
 
 - Lock local por puerta y `SELECT FOR UPDATE` para ordenar claims.
-- El lock local se libera durante la espera de 4 segundos para que pueda entrar
+- El lock local se libera durante la espera de 5 segundos para que pueda entrar
   el segundo participante. La resolución usa una tarea separada de los chequeos de puertas abiertas.
 - La actualización del esquema recupera puertas de la versión anterior que quedaron
   abiertas con un solo participante; conserva las puntuaciones ya confirmadas.
@@ -437,10 +440,12 @@ ES_DOOR_CLOSED_GIF=
 ES_DOOR_WAITING_GIF=
 ES_DOOR_CANDY_WIN_GIF=
 ES_DOOR_CANDY_LOSE_GIF=
+ES_DOOR_TIMEOUT=
 BR_DOOR_CLOSED_GIF=
 BR_DOOR_WAITING_GIF=
 BR_DOOR_CANDY_WIN_GIF=
 BR_DOOR_CANDY_LOSE_GIF=
+BR_DOOR_TIMEOUT=
 ```
 
 Después de configurarlas, revisa las tres fases en ES y BR con `/porta_de_teste`.

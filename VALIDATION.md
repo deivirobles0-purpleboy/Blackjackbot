@@ -8,7 +8,10 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras corregir el bloqueo del primer clic: **160 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras ajustar apertura, espera e imagen de vencimiento: **172 pruebas aprobadas, ninguna omitida**.
+- Cambio de `/porta_de_teste`: **15 pruebas del comando y componentes aprobadas**, incluidas
+  7 nuevas regresiones. Se elimina la respuesta temporal tras publicar, sin confirmación privada
+  ni enlace; se conservan los errores de publicación para el manejador habitual.
 - ZIP: integridad, entrada `bot.py`, configuración y sintaxis de los fuentes comprobadas.
 
 La suite comprobó:
@@ -32,11 +35,13 @@ La suite comprobó:
 - Dos puertas concurrentes no sobregiran el mismo saldo; claims duplicados y reinicios no vuelven a descontar.
 - Rollback de pérdidas si falla guardar la participación; simulaciones mantienen saldos intactos.
 - Migración repetible desde el esquema anterior conserva puntuaciones y puertas activas.
-- Plazo de 6 segundos desde la publicación para el primer participante válido;
+- Plazo de 5 segundos desde la publicación para el primer participante válido;
   clics tardíos no cambian puntuaciones aunque el temporizador aún no haya editado Discord.
-- El primer clic válido cancela el plazo y admite el segundo cupo durante 4 segundos; usuarios no registrados
+- El primer clic válido cancela el plazo y admite el segundo cupo durante 5 segundos; usuarios no registrados
   no prolongan el tiempo. Carrera entre vencimiento y clics sin premios duplicados.
 - Puerta vencida: mensaje y respuesta efímera ES/BR, botón rojo informativo y borrado a los 10 segundos.
+- Imagen Vencida.png integrada para puertas vencidas, con variables ES_DOOR_TIMEOUT y BR_DOOR_TIMEOUT;
+  ausentes o vacías usan el valor predeterminado y las sustituciones son independientes por idioma.
 - Resultado ganar/perder ES/BR: borrado a los 20 segundos, conservando saldos confirmados.
 - Plazos persistidos y recuperación del vencimiento antes de editar Discord, así como del borrado final.
 - Borrado idempotente; mensajes ya eliminados completan la limpieza y errores de permisos quedan pendientes.
@@ -46,10 +51,12 @@ La suite comprobó:
 - Clics del botón sin confirmaciones ni resultados efímeros para los dos participantes aceptados.
 - Flujo completo por botón en ES/BR, ganar/perder y prueba real/simulada: un único envío público,
   mismo Message ID, GIF por fase y resultado final con título, descripción y footer correspondientes.
-- Espera de 4 segundos desde aceptar al primer usuario, con cuenta original conservada tras reinicios.
+- Espera de 5 segundos desde aceptar al primer usuario, con cuenta original conservada tras reinicios.
 - Regresión del bloqueo con un solo clic reproducida antes de corregir: la fase de espera no aparecía.
 - Ocho pruebas completas con tareas de fondo y temporizadores reales (sin sustituir sleep ni avanzar
-  fases manualmente): ES/BR, ganar/perder y uno/dos participantes. Resultado observado alrededor de los 4 segundos.
+  fases manualmente): ES/BR, ganar/perder y uno/dos participantes. Resultado observado alrededor de los 5 segundos.
+- En las ocho combinaciones, el borrado queda programado para 20 segundos después de la edición final,
+  y el mensaje sigue presente al mostrarse el resultado. El segundo clic después de 4 segundos aún se admite ES/BR.
 - Un chequeo OPEN que sigue ejecutándose no absorbe la tarea de resolución del primer clic.
 - El segundo clic no reinicia el contador; clics fuera del plazo se rechazan antes de modificar saldos.
 - Migración de puertas antiguas abiertas con un solo participante y resolución tras reinicio sin volver a pagar.

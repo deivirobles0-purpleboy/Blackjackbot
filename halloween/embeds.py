@@ -16,7 +16,7 @@ def door_embed(
     text = TEXTS[drop.language]
     image_phase = ("candy_win" if drop.candy_win else "candy_lose") if phase == "result" else phase
     if phase == "expired":
-        image_phase = "closed"
+        image_phase = "timeout"
     description = text.expired if phase == "expired" else getattr(text, image_phase)
     title = text.lose_title if phase == "result" and not drop.candy_win else text.title
     if phase == "result":
