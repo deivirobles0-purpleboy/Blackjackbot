@@ -78,6 +78,11 @@ ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE door_drops DROP CONSTRAINT IF EXISTS door_drops_status_check;
 ALTER TABLE door_drops ADD CONSTRAINT door_drops_status_check CHECK
     (status IN ('publishing','open','processing','finished','cancelled','expired'));
+-- Resume doors stranded by the former requirement for two participants.
+UPDATE door_drops SET status='processing',expires_at=NULL,
+    processing_at=coalesce(processing_at,
+        (SELECT min(claimed_at) FROM door_winners WHERE drop_id=door_drops.id))
+    WHERE status='open' AND EXISTS (SELECT 1 FROM door_winners WHERE drop_id=door_drops.id);
 UPDATE door_drops SET expires_at=now()+interval '6 seconds'
     WHERE status='open' AND expires_at IS NULL
     AND NOT EXISTS (SELECT 1 FROM door_winners WHERE drop_id=door_drops.id);

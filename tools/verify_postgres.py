@@ -77,7 +77,9 @@ def main() -> int:
             TEST_DATABASE_URL=f"postgresql://test_halloween@127.0.0.1:{port}/postgres?sslmode=disable",
         )
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], cwd=ROOT, env=env
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *sys.argv[1:]],
+            cwd=ROOT,
+            env=env,
         )
         return result.returncode
     finally:

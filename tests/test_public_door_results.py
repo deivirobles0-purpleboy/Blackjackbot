@@ -62,6 +62,7 @@ async def test_button_flow_reveals_only_in_original_public_embed(
             channel_id=CHANNEL,
             response=SimpleNamespace(defer=AsyncMock()),
             followup=SimpleNamespace(send=AsyncMock()),
+            edit_original_response=AsyncMock(),
         )
         await button.callback(interaction)
         interactions.append(interaction)
@@ -71,7 +72,7 @@ async def test_button_flow_reveals_only_in_original_public_embed(
     interactions[2].followup.send.assert_awaited_once_with(
         TEXTS[language].unavailable, ephemeral=True
     )
-    assert started == [str(drop.id)]
+    assert started == [f"resolve:{drop.id}", f"resolve:{drop.id}"]
     assert [row["user_id"] for row in await repo.winners(drop.id)] == [11, 12]
     processing = await repo.drop(drop.id)
     assert processing.status == DropStatus.PROCESSING
@@ -118,7 +119,7 @@ async def test_button_flow_reveals_only_in_original_public_embed(
 
 
 @pytest.mark.parametrize("restarting", [False, True])
-async def test_result_countdown_uses_second_click_timestamp_without_reset(restarting):
+async def test_result_countdown_uses_first_click_timestamp_without_reset(restarting):
     started = datetime.now(timezone.utc) - timedelta(seconds=30 if restarting else 0)
     drop = DoorDrop(
         uuid4(), 1, Language.ES, 2, 3, DropStatus.PROCESSING, False, True, started, started, None

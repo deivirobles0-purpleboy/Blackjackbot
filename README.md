@@ -247,16 +247,19 @@ en su canal original.
    **Abrir** verde.
 2. Se revisa primero el rol participante. Los usuarios sin él reciben el Embed
    privado de registro, no consumen cupo y no modifican el ranking.
-3. Solo se aceptan dos usuarios distintos. En una victoria, cada aceptación sortea
+3. Se aceptan como máximo dos usuarios distintos. En una victoria, cada aceptación sortea
    1–5 dulces. En una derrota, cada usuario pierde una cantidad aleatoria independiente
    de 2–5 dulces, limitada por su saldo: nunca baja de cero. Participación y cambio
    de saldo se guardan en una misma transacción, sin esperar al segundo usuario.
-4. Al aceptar el segundo, el estado interno se cierra a más claims. Se edita **el
-   mismo mensaje** a espera, con botón rojo desactivado y segundo GIF.
-5. A los 4 segundos desde aceptar al segundo usuario, se vuelve a editar **ese mismo Message ID** para mostrar
+4. El primer clic válido inicia una ventana de 4 segundos y edita **el mismo mensaje**
+   a espera con su GIF. El botón permite entrar a un segundo usuario durante ese
+   plazo. Al completar los dos cupos pasa a rojo desactivado.
+5. A los 4 segundos desde aceptar al primer usuario, se vuelve a editar **ese mismo Message ID** para mostrar
    participantes y el GIF de ganar o perder, eliminando el botón. El embed de derrota
    muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
-   conservan el footer del top correspondiente al idioma. Se programa el siguiente drop.
+   conservan el footer del top correspondiente al idioma. El resultado se publica
+   con uno o dos participantes; no espera indefinidamente al segundo. Se programa
+   el siguiente drop.
 
 El clic aceptado se confirma silenciosamente: no se envía un resultado ni una
 confirmación de recompensa efímera. Puerta cerrada, espera y resultado se muestran
@@ -276,7 +279,9 @@ el clic exclusivamente para informar del vencimiento y no admite participantes.
 El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
 
 Si el primer usuario válido abre dentro del plazo, se cancela el vencimiento y la
-puerta sigue esperando al segundo participante. El resultado final, tanto al ganar
+puerta admite un segundo participante durante los 4 segundos siguientes. Su clic
+no reinicia el contador. Clics después del plazo se rechazan aunque la publicación
+del resultado sufra un retraso de conexión. El resultado final, tanto al ganar
 como al perder, se elimina **20 segundos después de publicarse**. Los plazos y el
 estado del borrado se guardan en PostgreSQL y se recuperan al reiniciar, conservando
 las puntuaciones. Los borrados pendientes de mensajes ya finalizados se recuperan
@@ -288,13 +293,17 @@ El campo Última Puerta corresponde a la fecha
 de creación del último drop automático publicado, no a pruebas ni consultas de Estado.
 
 Las puertas de prueba utilizan el mismo servicio, componentes y transacciones. Por
-defecto `recompensa_real=False`: simulan resultados sin tocar saldos. Con `True` se
+defecto `recompensa_real=False`: simulan resultados sin tocar saldos. Con `True`
 se aplican premios o descuentos reales. En ambos casos se exige el rol participante. Nunca cambian
 el timer ni la fecha de última puerta del sistema automático.
 
 ## Concurrencia, recuperación y errores
 
 - Lock local por puerta y `SELECT FOR UPDATE` para ordenar claims.
+- El lock local se libera durante la espera de 4 segundos para que pueda entrar
+  el segundo participante. La resolución usa una tarea separada de los chequeos de puertas abiertas.
+- La actualización del esquema recupera puertas de la versión anterior que quedaron
+  abiertas con un solo participante; conserva las puntuaciones ya confirmadas.
 - Unicidad `(drop_id,user_id)` y `(drop_id,slot)`; PostgreSQL solo admite slots 1–2.
 - Ganador, premio y cambio de saldo se confirman o revierten juntos.
 - Índice único parcial: una sola puerta automática viva por servidor/idioma.

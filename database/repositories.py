@@ -3,12 +3,17 @@ from __future__ import annotations
 import logging
 import random
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 import asyncpg
 
-from config.constants import DOOR_OPEN_SECONDS, EXPIRED_DELETE_SECONDS, MAX_WINNERS
+from config.constants import (
+    DOOR_OPEN_SECONDS,
+    EXPIRED_DELETE_SECONDS,
+    MAX_WINNERS,
+    RESULT_REVEAL_SECONDS,
+)
 from halloween.models import (
     ClaimResult,
     ClaimStatus,
@@ -362,6 +367,12 @@ class Repository:
                 now = await con.fetchval("SELECT clock_timestamp()")
                 if now >= row["expires_at"]:
                     return ClaimResult(ClaimStatus.EXPIRED)
+            if row["status"] == "processing":
+                now = await con.fetchval("SELECT clock_timestamp()")
+                if row["processing_at"] is None or now >= row["processing_at"] + timedelta(
+                    seconds=RESULT_REVEAL_SECONDS
+                ):
+                    return ClaimResult(ClaimStatus.CLOSED)
             if not eligible:
                 return ClaimResult(ClaimStatus.UNREGISTERED)
             if await con.fetchval(
@@ -373,7 +384,7 @@ class Repository:
             count = await con.fetchval(
                 "SELECT count(*) FROM door_winners WHERE drop_id=$1", drop_id
             )
-            if row["status"] != "open" or count >= MAX_WINNERS:
+            if row["status"] not in {"open", "processing"} or count >= MAX_WINNERS:
                 return ClaimResult(ClaimStatus.CLOSED)
             candies = roll_reward() if row["candy_win"] else -roll_loss()
             if row["rewards_enabled"]:
@@ -411,10 +422,9 @@ class Repository:
                 candies,
             )
             if count == 0:
-                await con.execute("UPDATE door_drops SET expires_at=NULL WHERE id=$1", drop_id)
-            if count + 1 == MAX_WINNERS:
                 await con.execute(
-                    "UPDATE door_drops SET status='processing',processing_at=clock_timestamp() WHERE id=$1",
+                    "UPDATE door_drops SET status='processing',expires_at=NULL,"
+                    "processing_at=clock_timestamp() WHERE id=$1",
                     drop_id,
                 )
             return ClaimResult(ClaimStatus.ACCEPTED, candies, count + 1)

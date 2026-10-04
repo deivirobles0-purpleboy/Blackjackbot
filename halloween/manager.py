@@ -80,7 +80,7 @@ class DoorManager:
         await asyncio.sleep(delay)
 
     async def _wait_for_result(self, drop: DoorDrop) -> None:
-        # Continue the original four-second countdown after a restart.
+        # Continue the first participant's four-second countdown after a restart.
         started = drop.processing_at or datetime.now(timezone.utc)
         await self._wait_until(started + timedelta(seconds=RESULT_REVEAL_SECONDS))
 
@@ -90,7 +90,9 @@ class DoorManager:
 
     async def _expire_at(self, drop_id: UUID, deadline: datetime) -> None:
         await self._wait_until(deadline)
-        await self.run_drop(drop_id)
+        expired = await self.repo.expire_unopened(drop_id)
+        if expired is not None:
+            await self.run_drop(drop_id)
 
     def schedule_deletion(self, drop: DoorDrop) -> None:
         if drop.delete_at is not None and drop.deleted_at is None:
@@ -242,18 +244,21 @@ class DoorManager:
                     self.schedule_deletion(current)
                     log.info("Puerta vencida sin participantes drop=%s", drop.id)
                     return
+                participants = await self.repo.winners(drop.id)
                 await message.edit(
                     embed=door_embed(drop, "waiting", self.settings),
-                    view=DoorView(drop.language, drop.id, disabled=True),
+                    view=DoorView(
+                        drop.language, drop.id, disabled=len(participants) >= MAX_WINNERS
+                    ),
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
-                await self._wait_for_result(drop)
-                winners = await self.repo.winners(drop.id)
-                self.require_leader()
-                await message.edit(
-                    embed=door_embed(drop, "result", self.settings, winners),
-                    view=None,
-                    allowed_mentions=discord.AllowedMentions.none(),
+                log.info(
+                    "Puerta en espera drop=%s participantes=%s/%s cierre=%s",
+                    drop.id,
+                    len(participants),
+                    MAX_WINNERS,
+                    (drop.processing_at or datetime.now(timezone.utc))
+                    + timedelta(seconds=RESULT_REVEAL_SECONDS),
                 )
             except discord.NotFound:
                 if drop.status == DropStatus.EXPIRED:
@@ -268,6 +273,31 @@ class DoorManager:
                 if drop.status == DropStatus.EXPIRED:
                     raise
                 log.exception("No se puede editar puerta drop=%s; suspensión controlada", drop.id)
+                if not drop.is_test:
+                    await self.repo.suspend(drop.guild_id, drop.language)
+                await self.repo.finish(drop.id, cancelled=True)
+                return
+        # Keep the lock free during collection so the second participant can join.
+        await self._wait_for_result(drop)
+        self.require_leader()
+        async with self._lock(drop_id):
+            current = await self.repo.drop(drop_id)
+            if not current or current.status != DropStatus.PROCESSING:
+                return
+            winners = await self.repo.winners(drop.id)
+            self.require_leader()
+            try:
+                await message.edit(
+                    embed=door_embed(current, "result", self.settings, winners),
+                    view=None,
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
+            except discord.NotFound:
+                log.warning("Mensaje eliminado durante resolución drop=%s", drop.id)
+                await self.repo.finish(drop.id, cancelled=True)
+                return
+            except discord.Forbidden:
+                log.exception("No se puede publicar resultado drop=%s", drop.id)
                 if not drop.is_test:
                     await self.repo.suspend(drop.guild_id, drop.language)
                 await self.repo.finish(drop.id, cancelled=True)
@@ -326,8 +356,18 @@ class DoorManager:
                     result.candies,
                     result.count,
                 )
+                self.start_job(f"resolve:{drop_id}", self.run_drop(drop_id))
                 if result.count == MAX_WINNERS:
-                    self.start_job(str(drop_id), self.run_drop(drop_id))
+                    try:
+                        await interaction.edit_original_response(
+                            view=DoorView(language, drop_id, disabled=True)
+                        )
+                    except discord.HTTPException:
+                        log.warning(
+                            "No se pudo cerrar el botón; resolución sigue activa drop=%s",
+                            drop_id,
+                            exc_info=True,
+                        )
                 return
             elif result.status == ClaimStatus.EXPIRED:
                 message = text.expired

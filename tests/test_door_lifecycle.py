@@ -226,6 +226,9 @@ async def test_scheduler_recovers_open_expiration_and_pending_deletions():
 
 async def test_runtime_expiration_waits_for_persisted_deadline():
     mgr = manager(None, FakeChannel())
+    mgr.repo = SimpleNamespace(
+        expire_unopened=AsyncMock(return_value=SimpleNamespace(status=DropStatus.EXPIRED))
+    )
     mgr._wait_until = AsyncMock()
     mgr.run_drop = AsyncMock()
     drop_id = uuid4()
