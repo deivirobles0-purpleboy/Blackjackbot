@@ -131,7 +131,7 @@ async def test_verified_startup_summary_is_logged_after_config_details(caplog):
     with caplog.at_level(logging.INFO):
         assert log_gifs(bot)
         await log_ready_status(bot)
-    assert "GIFs configurados: ES 3/3 | BR 3/3" in caplog.text
+    assert "GIFs configurados: ES 4/4 | BR 4/4" in caplog.text
     assert "ES: Inactivo" in caplog.text
     assert "BR: Inactivo" in caplog.text
     assert caplog.records[-1].getMessage() == "✅ Blackjack Conectado - 100% del inicio verificado"

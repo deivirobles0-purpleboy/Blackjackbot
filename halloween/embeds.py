@@ -14,14 +14,21 @@ def door_embed(
     drop: DoorDrop, phase: str, settings: Settings, winners: Sequence[Mapping] = ()
 ) -> discord.Embed:
     text = TEXTS[drop.language]
-    description = getattr(text, phase)
+    image_phase = ("candy_win" if drop.candy_win else "candy_lose") if phase == "result" else phase
+    description = getattr(text, image_phase)
+    title = text.lose_title if phase == "result" and not drop.candy_win else text.title
     if phase == "result":
         description += "\n\n" + "\n".join(
-            f"🎃 <@{winner['user_id']}>: {winner['candies']} {text.candy}" for winner in winners
+            (
+                f"🎃 <@{winner['user_id']}>: {winner['candies']} {text.candy}"
+                if drop.candy_win
+                else f"<@{winner['user_id']}>: {winner['candies']}"
+            )
+            for winner in winners
         )
-    embed = discord.Embed(title=text.title, description=description, color=0xF28C28)
+    embed = discord.Embed(title=title, description=description, color=0xF28C28)
     embed.set_footer(text=text.footer)
-    image = getattr(settings.images[drop.language], phase)
+    image = getattr(settings.images[drop.language], image_phase)
     if image:
         embed.set_image(url=image)
     if drop.is_test:
@@ -106,6 +113,15 @@ def state_embed(cfg: EventConfig) -> discord.Embed:
     )
     for label, value in zip(labels, values):
         embed.add_field(name=label, value=value, inline=False)
+    embed.add_field(
+        name=TEXTS[cfg.language].probability_button,
+        value=(
+            f"Ganar: {cfg.win_percent}% | Perder: {cfg.lose_percent}%"
+            if es
+            else f"Ganhar: {cfg.win_percent}% | Perder: {cfg.lose_percent}%"
+        ),
+        inline=False,
+    )
     if not cfg.complete:
         embed.add_field(
             name="Configuración / Configuração",

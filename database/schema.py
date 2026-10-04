@@ -59,9 +59,17 @@ CREATE TABLE IF NOT EXISTS door_winners (
     drop_id UUID NOT NULL REFERENCES door_drops (id),
     user_id BIGINT NOT NULL,
     slot SMALLINT NOT NULL CHECK (slot BETWEEN 1 AND 2),
-    candies SMALLINT NOT NULL CHECK (candies BETWEEN 1 AND 5),
+    candies SMALLINT NOT NULL CHECK (candies BETWEEN -5 AND 5),
     claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (drop_id, user_id),
     UNIQUE (drop_id, slot)
 );
+
+-- Idempotent upgrade: preserve scores, settings and existing winning doors.
+ALTER TABLE event_config ADD COLUMN IF NOT EXISTS win_percent SMALLINT NOT NULL
+    DEFAULT 100 CHECK (win_percent BETWEEN 0 AND 100);
+ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS candy_win BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE door_winners DROP CONSTRAINT IF EXISTS door_winners_candies_check;
+ALTER TABLE door_winners ADD CONSTRAINT door_winners_candies_check
+    CHECK (candies BETWEEN -5 AND 5);
 """

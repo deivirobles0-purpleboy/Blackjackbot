@@ -38,6 +38,11 @@ class EventConfig:
     next_drop_at: datetime | None
     last_drop_at: datetime | None
     updated_at: datetime
+    win_percent: int = 100
+
+    @property
+    def lose_percent(self) -> int:
+        return 100 - self.win_percent
 
     @classmethod
     def from_record(cls, row: Mapping[str, Any]) -> EventConfig:
@@ -66,6 +71,7 @@ class DoorDrop:
     created_at: datetime
     processing_at: datetime | None
     finished_at: datetime | None
+    candy_win: bool = True
 
     @classmethod
     def from_record(cls, row: Mapping[str, Any]) -> DoorDrop:
@@ -92,6 +98,13 @@ def validate_minutes(minimum: int, maximum: int) -> None:
         raise ValueError("Los minutos deben ser números enteros")
     if not 0 < minimum <= maximum <= 2_147_483_647:
         raise ValueError("Mínimo y máximo deben ser positivos y máximo >= mínimo")
+
+
+def validate_probabilities(win: int, lose: int) -> None:
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in (win, lose)):
+        raise ValueError("Los porcentajes deben ser enteros")
+    if not (0 <= win <= 100 and 0 <= lose <= 100 and win + lose == 100):
+        raise ValueError("Los porcentajes deben estar entre 0 y 100 y sumar 100")
 
 
 def adjust_balance(current: int, action: str, amount: int = 0) -> int:

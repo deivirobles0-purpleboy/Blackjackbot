@@ -86,22 +86,32 @@ y [Views persistentes del proyecto discord.py](https://github.com/Rapptz/discord
 | `DATABASE_URL` | URL de conexión PostgreSQL; obligatoria |
 | `ES_DOOR_CLOSED_GIF` | Puerta cerrada ES |
 | `ES_DOOR_WAITING_GIF` | Animación de espera ES |
-| `ES_DOOR_RESULT_GIF` | Resultado ES |
+| `ES_DOOR_CANDY_WIN_GIF` | Ganar dulces ES |
+| `ES_DOOR_CANDY_LOSE_GIF` | Perder dulces ES |
 | `BR_DOOR_CLOSED_GIF` | Puerta cerrada BR |
 | `BR_DOOR_WAITING_GIF` | Animación de espera BR |
-| `BR_DOOR_RESULT_GIF` | Resultado BR |
+| `BR_DOOR_CANDY_WIN_GIF` | Ganhar doces BR |
+| `BR_DOOR_CANDY_LOSE_GIF` | Perder doces BR |
 | `DATABASE_CA_FILE` | Opcional: ruta al certificado CA de Aiven |
 | `DATABASE_CA_PEM` | Opcional: contenido PEM de la CA, admite saltos `\n` |
 | `COMMAND_GUILD_ID` | Opcional: servidor de sincronización para desarrollo |
 | `LOG_LEVEL` | Opcional: `INFO` por defecto |
 
-Los seis GIFs ya tienen un valor predeterminado incluido en `config/settings.py`:
-`https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif`.
-Por petición del usuario, las tres fases de ambos idiomas utilizan ese mismo GIF.
-No necesitas configurar las seis variables para mostrar imágenes. Si una variable
+Los GIFs ya tienen valores predeterminados incluidos en `config/settings.py`
+para ambos idiomas:
+
+- Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif`.
+- Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesGIF.gif`.
+- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaGIF.gif`.
+
+No necesitas configurar las ocho variables para mostrar imágenes. Si una variable
 está ausente o vacía, se utiliza el valor predeterminado; una URL HTTPS en esa
 variable sustituye únicamente la fase e idioma correspondientes. Reinicia el bot
 después de cambiar las variables.
+
+Compatibilidad: `ES_DOOR_RESULT_GIF` y `BR_DOOR_RESULT_GIF` siguen aceptándose como
+respaldo para ganar cuando el nuevo nombre está ausente o vacío. El nuevo nombre
+no vacío tiene prioridad. Renombra las variables antiguas al actualizar Square.
 
 ## Aiven PostgreSQL y SSL
 
@@ -207,9 +217,13 @@ saldos y los timers del evento sí permanecen en PostgreSQL.
 4. En **CD puertas / CD das portas**, introduce mínimo y máximo, en minutos enteros
    positivos, con máximo mayor o igual al mínimo. No hay intervalo predefinido:
    debes configurar ambos valores.
-5. **Estado** consulta PostgreSQL y muestra estado activo, canal, CD mínimo/máximo,
+5. En **Probabilidad / Probabilidade**, introduce **%ganar / %perder** o
+   **%ganhar / %perder**. Son enteros de 0 a 100 que deben sumar 100. Por defecto:
+   100% ganar y 0% perder, independientemente para ES y BR.
+6. **Estado** consulta PostgreSQL y muestra estado activo, canal, CD mínimo/máximo,
    próxima aparición y minutos reales desde la última puerta. No altera ajustes.
-6. Ejecuta `/ativar_doces`. Solo se activan idiomas completos; se informa cuáles faltan.
+   También muestra las probabilidades guardadas.
+7. Ejecuta `/ativar_doces`. Solo se activan idiomas completos; se informa cuáles faltan.
 
 El panel tiene 10 minutos de duración y solo lo puede operar el Staff que lo abrió.
 Si caduca, vuelve a usar el comando. Los botones públicos de registro y puerta
@@ -224,17 +238,26 @@ en su canal original.
 
 ## Puertas y recompensas
 
-1. Se crea un drop en PostgreSQL y se envía un mensaje con la puerta cerrada y
+1. Se crea un drop en PostgreSQL, se sortea una sola victoria o derrota según la
+   probabilidad del idioma y se guarda el resultado para ambos participantes.
+   Se envía un mensaje con la puerta cerrada y
    **Abrir** verde.
 2. Se revisa primero el rol participante. Los usuarios sin él reciben el Embed
    privado de registro, no consumen cupo y no modifican el ranking.
-3. Solo se aceptan dos usuarios distintos. Cada aceptación sortea 1–5 dulces y guarda
-   ganador y saldo en una misma transacción. El primer premio queda guardado sin
-   esperar al segundo usuario.
+3. Solo se aceptan dos usuarios distintos. En una victoria, cada aceptación sortea
+   1–5 dulces. En una derrota, cada usuario pierde una cantidad aleatoria independiente
+   de 2–5 dulces, limitada por su saldo: nunca baja de cero. Participación y cambio
+   de saldo se guardan en una misma transacción, sin esperar al segundo usuario.
 4. Al aceptar el segundo, el estado interno se cierra a más claims. Se edita **el
    mismo mensaje** a espera, con botón rojo desactivado y segundo GIF.
 5. Después de 2,5 segundos se vuelve a editar **ese mismo Message ID** para mostrar
-   ganadores y tercer GIF, eliminando el botón. Se programa el siguiente drop.
+   participantes y el GIF de ganar o perder, eliminando el botón. El embed de derrota
+   muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
+   conservan el footer del top correspondiente al idioma. Se programa el siguiente drop.
+
+Un cambio de probabilidades afecta a las nuevas puertas. Las ya creadas conservan
+su resultado, incluso tras reinicios. El top consulta los saldos confirmados en
+PostgreSQL y refleja premios y descuentos en la siguiente consulta.
 
 Una puerta espera hasta reunir dos participantes válidos: no se añadió una caducidad
 que el prompt no especifica. Desactivar cancela timers y puertas aún no publicadas;
@@ -244,7 +267,7 @@ de creación del último drop automático publicado, no a pruebas ni consultas d
 
 Las puertas de prueba utilizan el mismo servicio, componentes y transacciones. Por
 defecto `recompensa_real=False`: simulan resultados sin tocar saldos. Con `True` se
-entregan premios reales. En ambos casos se exige el rol participante. Nunca cambian
+se aplican premios o descuentos reales. En ambos casos se exige el rol participante. Nunca cambian
 el timer ni la fecha de última puerta del sistema automático.
 
 ## Concurrencia, recuperación y errores
@@ -366,7 +389,7 @@ y [despliegue de bots y variables](https://help.squarecloud.app/en-us/article/ho
    opción disponible en tu cuenta. Mantén la entrada `bot.py` y `requirements.txt`.
 3. Configura `DISCORD_TOKEN`, `DATABASE_URL` y la CA recomendada en las variables de
    la aplicación. No hace falta subir `.env` a producción.
-4. El GIF ya está incluido para las seis fases; si deseas sustituirlo, configura las
+4. Los GIFs ya están incluidos para las ocho combinaciones; si deseas sustituirlos, configura las
    variables correspondientes y reinicia la aplicación para leerlas.
 5. Revisa logs de conexión PostgreSQL, Cogs, sincronización y scheduler.
 6. Publica el registro, configura ES/BR y prueba primero una puerta simulada.
@@ -381,12 +404,18 @@ utilizar imágenes diferentes en el futuro, puedes sustituirlas individualmente:
 ```dotenv
 ES_DOOR_CLOSED_GIF=
 ES_DOOR_WAITING_GIF=
-ES_DOOR_RESULT_GIF=
+ES_DOOR_CANDY_WIN_GIF=
+ES_DOOR_CANDY_LOSE_GIF=
 BR_DOOR_CLOSED_GIF=
 BR_DOOR_WAITING_GIF=
-BR_DOOR_RESULT_GIF=
+BR_DOOR_CANDY_WIN_GIF=
+BR_DOOR_CANDY_LOSE_GIF=
 ```
 
 Después de configurarlas, revisa las tres fases en ES y BR con `/porta_de_teste`.
+Para probar una derrota, configura temporalmente 0% ganar / 100% perder en ese
+idioma y crea una puerta de prueba con `recompensa_real=False`. Después restaura
+las probabilidades deseadas. Al iniciar, el esquema se actualiza automáticamente
+conservando puntuaciones y puertas existentes; estas últimas siguen siendo victorias.
 Los tokens y credenciales se configuran en Square Cloud; no hace falta compartirlos
 en el chat para completar el código.

@@ -30,7 +30,7 @@ def settings():
             language: DoorImages(
                 **{
                     phase: f"https://example.com/{language.value}/{phase}.gif"
-                    for phase in ("closed", "waiting", "result")
+                    for phase in ("closed", "waiting", "candy_win", "candy_lose")
                 }
             )
             for language in Language
@@ -87,7 +87,7 @@ async def test_persistent_views_ids_and_channel_select():
     assert len(panel.children) == 2
     for language in Language:
         language_panel = LanguagePanel(bot, owner, language)
-        assert len(language_panel.children) == 3
+        assert len(language_panel.children) == 4
         picker = ChannelView(bot, owner, language).children[0]
         assert picker.channel_types == [discord.ChannelType.text]
         modal = MinutesModal(bot, owner, language, 1, 5)
@@ -111,7 +111,8 @@ def test_gifs_language_phase_and_exact_embeds():
         )
         for phase in ("closed", "waiting", "result"):
             embed = door_embed(drop, phase, settings(), [{"user_id": 123, "candies": 4}])
-            assert embed.image.url == f"https://example.com/{language.value}/{phase}.gif"
+            image_phase = "candy_win" if phase == "result" else phase
+            assert embed.image.url == f"https://example.com/{language.value}/{image_phase}.gif"
             if phase == "result":
                 assert "<@123>: 4" in embed.description
 
@@ -132,7 +133,7 @@ def test_state_dynamic_last_drop_and_missing_config():
         now,
     )
     embed = state_embed(cfg)
-    assert embed.fields[-1].value == "Hace 127 minutos"
+    assert embed.fields[5].value == "Hace 127 minutos"
     missing = EventConfig(1, Language.BR, None, None, None, False, None, None, now)
     embed = state_embed(missing)
     assert embed.fields[4].value == "Não programada"

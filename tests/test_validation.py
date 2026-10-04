@@ -39,7 +39,7 @@ def test_settings_read_env_without_gifs(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test?sslmode=require")
     monkeypatch.delenv("COMMAND_GUILD_ID", raising=False)
     for language in Language:
-        for phase in ("CLOSED", "WAITING", "RESULT"):
+        for phase in ("CLOSED", "WAITING", "CANDY_WIN", "CANDY_LOSE", "RESULT"):
             monkeypatch.delenv(f"{language}_DOOR_{phase}_GIF", raising=False)
     settings = Settings.from_env()
     assert settings.images == DEFAULT_DOOR_IMAGES
@@ -52,14 +52,15 @@ def test_settings_read_env_without_gifs(monkeypatch):
 
 
 @pytest.mark.parametrize("language", list(Language))
-@pytest.mark.parametrize("phase", ["closed", "waiting", "result"])
+@pytest.mark.parametrize("phase", ["closed", "waiting", "candy_win", "candy_lose"])
 def test_gif_override_is_independent_and_empty_uses_default(monkeypatch, language, phase):
     monkeypatch.setattr("config.settings.load_dotenv", lambda *a, **kw: None)
     monkeypatch.setenv("DISCORD_TOKEN", "test-token")
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test?sslmode=require")
     monkeypatch.delenv("COMMAND_GUILD_ID", raising=False)
     for current_language in Language:
-        for current_phase in ("closed", "waiting", "result"):
+        monkeypatch.delenv(f"{current_language}_DOOR_RESULT_GIF", raising=False)
+        for current_phase in ("closed", "waiting", "candy_win", "candy_lose"):
             monkeypatch.delenv(
                 f"{current_language}_DOOR_{current_phase.upper()}_GIF", raising=False
             )
@@ -68,7 +69,7 @@ def test_gif_override_is_independent_and_empty_uses_default(monkeypatch, languag
     monkeypatch.setenv(name, f"  {override}  ")
     images = Settings.from_env().images
     for current_language in Language:
-        for current_phase in ("closed", "waiting", "result"):
+        for current_phase in ("closed", "waiting", "candy_win", "candy_lose"):
             expected = (
                 override
                 if (current_language, current_phase) == (language, phase)

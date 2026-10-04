@@ -63,8 +63,19 @@ def manager(repo, channel):
 
 
 @pytest.mark.parametrize("language", list(Language))
-async def test_three_phases_same_message_and_processing_recovery(repo, monkeypatch, language):
+@pytest.mark.parametrize("candy_win", [True, False])
+async def test_three_phases_same_message_and_processing_recovery(
+    repo, monkeypatch, language, candy_win
+):
     await ready(repo, language)
+    await repo.set_probabilities(
+        GUILD, language, 100 if candy_win else 0, 0 if candy_win else 100, STAFF
+    )
+    if not candy_win:
+        await repo.adjust(GUILD, 11, language, "add", 10, STAFF)
+        await repo.adjust(GUILD, 12, language, "add", 10, STAFF)
+        losses = iter([3, 4])
+        monkeypatch.setattr("database.repositories.roll_loss", lambda: next(losses))
     channel = FakeChannel()
     mgr = manager(repo, channel)
     drop = await repo.prepare_drop(GUILD, language, CHANNEL, is_test=True)
@@ -84,7 +95,15 @@ async def test_three_phases_same_message_and_processing_recovery(repo, monkeypat
     assert message.edits[1]["view"] is None
     assert message.embed.image.url == DEFAULT_DOOR_IMAGES[language].closed
     assert message.edits[0]["embed"].image.url == DEFAULT_DOOR_IMAGES[language].waiting
-    assert message.edits[1]["embed"].image.url == DEFAULT_DOOR_IMAGES[language].result
+    result_embed = message.edits[1]["embed"]
+    assert result_embed.image.url == getattr(
+        DEFAULT_DOOR_IMAGES[language], "candy_win" if candy_win else "candy_lose"
+    )
+    if not candy_win:
+        assert "<@11>: -3\n<@12>: -4" in result_embed.description
+        assert result_embed.title == (
+            "Que mal! Truco..." if language == Language.ES else "Foi mal! Travessuras..."
+        )
     assert (await repo.drop(drop.id)).status == DropStatus.FINISHED
     assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
 

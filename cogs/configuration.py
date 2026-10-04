@@ -7,7 +7,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from halloween.embeds import configuration_embed, state_embed
-from halloween.models import Language, validate_minutes
+from halloween.models import Language, validate_minutes, validate_probabilities
 from halloween.texts import TEXTS
 from utils.errors import SafeModal, SafeView
 from utils.permissions import panel_allowed, staff_only
@@ -111,11 +111,51 @@ class MinutesModal(SafeModal):
         )
 
 
+class ProbabilityModal(SafeModal):
+    def __init__(self, bot, owner_id: int, language: Language) -> None:
+        text = TEXTS[language]
+        super().__init__(title=text.probability_button, timeout=600)
+        self.bot = bot
+        self.owner_id = owner_id
+        self.language = language
+        self.win = discord.ui.TextInput(label=text.win_label, placeholder="0–100", max_length=3)
+        self.lose = discord.ui.TextInput(label=text.lose_label, placeholder="0–100", max_length=3)
+        self.add_item(self.win)
+        self.add_item(self.lose)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        if not await panel_allowed(interaction, self.owner_id):
+            return
+        text = TEXTS[self.language]
+        try:
+            win, lose = int(self.win.value), int(self.lose.value)
+            validate_probabilities(win, lose)
+        except ValueError:
+            await interaction.response.send_message(text.invalid_probabilities, ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await self.bot.repo.set_probabilities(
+            interaction.guild_id, self.language, win, lose, interaction.user.id
+        )
+        log.info(
+            "Probabilidad configurada guild=%s language=%s win=%s lose=%s admin=%s",
+            interaction.guild_id,
+            self.language,
+            win,
+            lose,
+            interaction.user.id,
+        )
+        await interaction.followup.send(
+            text.probabilities_saved.format(win=win, lose=lose), ephemeral=True
+        )
+
+
 class LanguagePanel(StaffView):
     def __init__(self, bot, owner_id: int, language: Language) -> None:
         super().__init__(bot, owner_id)
         self.language = language
         self.cd.label = TEXTS[language].cd_button
+        self.probability.label = TEXTS[language].probability_button
 
     @discord.ui.button(label="Canal", style=discord.ButtonStyle.primary)
     async def channel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
@@ -130,6 +170,14 @@ class LanguagePanel(StaffView):
         # A modal must be the initial response. Keep DB access out of this path.
         await interaction.response.send_modal(
             MinutesModal(self.bot, self.owner_id, self.language, None, None)
+        )
+
+    @discord.ui.button(label="Probabilidad", style=discord.ButtonStyle.primary)
+    async def probability(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ) -> None:
+        await interaction.response.send_modal(
+            ProbabilityModal(self.bot, self.owner_id, self.language)
         )
 
     @discord.ui.button(label="Estado", style=discord.ButtonStyle.secondary)

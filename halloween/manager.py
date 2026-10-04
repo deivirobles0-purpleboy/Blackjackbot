@@ -250,8 +250,10 @@ class DoorManager:
                 )
                 if result.count == MAX_WINNERS:
                     self.start_job(str(drop_id), self.run_drop(drop_id))
-                message = text.accepted.format(amount=result.candies)
                 drop = await self.repo.drop(drop_id)
+                message = (text.accepted if drop.candy_win else text.accepted_loss).format(
+                    amount=abs(result.candies)
+                )
                 if not drop.rewards_enabled:
                     message += " (Simulación / Simulação; ranking sin cambios.)"
             elif result.status == ClaimStatus.DUPLICATE:

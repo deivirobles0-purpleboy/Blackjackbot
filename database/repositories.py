@@ -15,8 +15,9 @@ from halloween.models import (
     EventConfig,
     Language,
     validate_minutes,
+    validate_probabilities,
 )
-from halloween.rewards import roll_reward
+from halloween.rewards import roll_candy_win, roll_loss, roll_reward
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +89,22 @@ class Repository:
             )
             await self._audit(con, guild_id, admin_id, language, "minutes_min", amount=minimum)
             await self._audit(con, guild_id, admin_id, language, "minutes_max", amount=maximum)
+
+    async def set_probabilities(
+        self, guild_id: int, language: Language, win: int, lose: int, admin_id: int
+    ) -> None:
+        validate_probabilities(win, lose)
+        await self.ensure_config(guild_id)
+        async with self.pool.acquire() as con, con.transaction():
+            await con.execute(
+                "UPDATE event_config SET win_percent=$3,updated_at=now() "
+                "WHERE guild_id=$1 AND language=$2",
+                guild_id,
+                language,
+                win,
+            )
+            await self._audit(con, guild_id, admin_id, language, "probability_win", amount=win)
+            await self._audit(con, guild_id, admin_id, language, "probability_lose", amount=lose)
 
     async def set_enabled(self, guild_id: int, enabled: bool, admin_id: int) -> list[Language]:
         await self.ensure_config(guild_id)
@@ -193,14 +210,16 @@ class Repository:
             if channel_id is None:
                 raise ValueError("Configura primero el canal de drops")
             drop = await con.fetchrow(
-                "INSERT INTO door_drops (id,guild_id,language,channel_id,status,is_test,rewards_enabled) "
-                "VALUES ($1,$2,$3,$4,'publishing',$5,$6) RETURNING *",
+                "INSERT INTO door_drops "
+                "(id,guild_id,language,channel_id,status,is_test,rewards_enabled,candy_win) "
+                "VALUES ($1,$2,$3,$4,'publishing',$5,$6,$7) RETURNING *",
                 uuid4(),
                 guild_id,
                 language,
                 channel_id,
                 is_test,
                 rewards_enabled,
+                roll_candy_win(row["win_percent"]),
             )
             if not is_test:
                 await con.execute(
@@ -296,7 +315,34 @@ class Repository:
             )
             if row["status"] != "open" or count >= MAX_WINNERS:
                 return ClaimResult(ClaimStatus.CLOSED)
-            candies = roll_reward()
+            candies = roll_reward() if row["candy_win"] else -roll_loss()
+            if row["rewards_enabled"]:
+                # Lock the balance so the recorded delta matches the actual deduction,
+                # including concurrent doors and staff adjustments.
+                await con.execute(
+                    "INSERT INTO user_candies (guild_id,user_id,language) VALUES ($1,$2,$3) "
+                    "ON CONFLICT DO NOTHING",
+                    guild_id,
+                    user_id,
+                    language,
+                )
+                balance = await con.fetchval(
+                    "SELECT candies FROM user_candies "
+                    "WHERE guild_id=$1 AND user_id=$2 AND language=$3 FOR UPDATE",
+                    guild_id,
+                    user_id,
+                    language,
+                )
+                if candies < 0:
+                    candies = -min(balance, -candies)
+                await con.execute(
+                    "UPDATE user_candies SET candies=candies+$4,updated_at=now() "
+                    "WHERE guild_id=$1 AND user_id=$2 AND language=$3",
+                    guild_id,
+                    user_id,
+                    language,
+                    candies,
+                )
             await con.execute(
                 "INSERT INTO door_winners (drop_id,user_id,slot,candies) VALUES ($1,$2,$3,$4)",
                 drop_id,
@@ -304,16 +350,6 @@ class Repository:
                 count + 1,
                 candies,
             )
-            if row["rewards_enabled"]:
-                await con.execute(
-                    "INSERT INTO user_candies (guild_id,user_id,language,candies) VALUES ($1,$2,$3,$4) "
-                    "ON CONFLICT (guild_id,user_id,language) DO UPDATE "
-                    "SET candies=user_candies.candies+EXCLUDED.candies,updated_at=now()",
-                    guild_id,
-                    user_id,
-                    language,
-                    candies,
-                )
             if count + 1 == MAX_WINNERS:
                 await con.execute(
                     "UPDATE door_drops SET status='processing',processing_at=now() WHERE id=$1",

@@ -8,7 +8,7 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras integrar GIFs, logs y permisos por roles: **75 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras integrar probabilidades y derrotas ES/BR: **105 pruebas aprobadas, ninguna omitida**.
 - ZIP: integridad, entrada `bot.py`, configuración y sintaxis de los fuentes comprobadas.
 
 La suite comprobó:
@@ -20,10 +20,19 @@ La suite comprobó:
 - Diez comandos Slash, opciones ES/BR, paneles, Modal y ChannelSelect.
 - Views persistentes e IDs estables; botón de espera rojo desactivado.
 - Imágenes separadas por idioma y fase mediante URLs ficticias en tests.
-- GIF proporcionado integrado como valor predeterminado para las seis combinaciones.
+- GIFs integrados: Puerta para cierre/espera, Dulces para ganar y Roba para perder ES/BR.
+- Variables CANDY_WIN/CANDY_LOSE independientes y compatibilidad con RESULT; el nombre nuevo tiene prioridad.
+- Porcentajes enteros entre 0 y 100 que suman 100; valores predeterminados 100/0 por idioma.
+- Límites exactos de sorteo (0%, 1%, 37%, 99%, 100%) y pérdidas de 2 a 5.
+- Botones y modales localizados; validación y revalidación de permisos Staff antes de guardar.
+- Un resultado común persistido por puerta y descuentos individuales; nuevas probabilidades afectan nuevas puertas.
+- Pérdidas limitadas al saldo disponible, incluido cero, y actualización inmediata del ranking.
+- Dos puertas concurrentes no sobregiran el mismo saldo; claims duplicados y reinicios no vuelven a descontar.
+- Rollback de pérdidas si falla guardar la participación; simulaciones mantienen saldos intactos.
+- Migración repetible desde el esquema anterior conserva puntuaciones y puertas activas.
 - Variables de entorno independientes por idioma/fase; valores vacíos usan el predeterminado.
 - Tres fases ES y BR sobre el mismo Message ID con el GIF integrado y sin duplicar premios.
-- URL pública comprobada mediante GET parcial: HTTP 206, `image/gif` y firma GIF válida.
+- URL de Puerta comprobada previamente mediante GET parcial: HTTP 206, `image/gif` y firma GIF válida.
 - 40 claims simultáneos: exactamente dos ganadores distintos y saldos coherentes.
 - Repetición del mismo claim sin duplicar premio.
 - Constraints de máximo dos slots, unicidad y saldos no negativos.
@@ -53,6 +62,8 @@ La suite comprobó:
 discord.py produjo advertencias de deprecación sobre `asyncio.iscoroutinefunction`
 en Python 3.14. No hubo fallos; la advertencia corresponde a una API que Python prevé
 retirar en 3.16 y debe revisarse al actualizar a esa versión.
+La inspección de etiquetas de TextInput en los tests también produjo advertencias
+de deprecación de discord.py; los modales se crearon y procesaron correctamente.
 
 ## Validación pendiente en producción
 
@@ -60,8 +71,9 @@ El flujo Discord se probó con componentes reales de discord.py y dobles de cana
 mensajes e interacciones. Aún se necesita una prueba en el servidor para verificar
 permisos y jerarquía reales, sincronización y acceso a canales. La conexión TLS a
 la instancia Aiven del usuario se comprobará al configurar sus variables en Square
-Cloud. Los seis GIFs proporcionados apuntan a la misma URL y ya están integrados;
-su acceso HTTP fue validado. La reproducción y el comportamiento visual en el
+Cloud. Las ocho combinaciones utilizan tres URLs de GIFs integradas.
+El acceso HTTP a los GIFs de ganar y perder queda pendiente de comprobar al desplegar.
+La reproducción y el comportamiento visual en el
 cliente real de Discord deben comprobarse al desplegar.
 
 El proyecto incluye los recursos proporcionados y está preparado para configurar producción;
