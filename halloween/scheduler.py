@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from config.constants import INSTANCE_LOCK_KEY
 from halloween.models import DropStatus
+from utils.startup import log_ready_status
 
 log = logging.getLogger(__name__)
 
@@ -44,11 +45,18 @@ class Scheduler:
                     continue
                 self.manager.leader.set()
                 self._open_checked.clear()
-                log.info("Scheduler iniciado; estado ES/BR recuperado desde PostgreSQL")
+                reported = False
                 while not self.bot.is_closed():
                     await connection.fetchval("SELECT 1")
                     if self.bot.is_ready():
                         await self._tick()
+                        if not reported or self.bot.status_requested:
+                            log.info(
+                                "✅ Scheduler: activo | ES/BR independientes | Estado recuperado"
+                            )
+                            await log_ready_status(self.bot)
+                            self.bot.status_requested = False
+                            reported = True
                     await asyncio.sleep(5)
             except Exception:
                 log.exception("Scheduler/DB no disponible; pausa y reconexión en 10s")

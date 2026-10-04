@@ -13,7 +13,6 @@ from cogs.configuration import ChannelView, ConfigurationPanel, LanguagePanel, M
 from config.constants import (
     PARTICIPANT_ROLE_ID,
     REGISTRATION_CUSTOM_ID,
-    STAFF_USER_IDS,
     VERIFIED_ROLE_IDS,
 )
 from config.settings import DoorImages, Settings
@@ -82,7 +81,7 @@ async def test_persistent_views_ids_and_channel_select():
         disabled = DoorView(language, drop_id, disabled=True).children[0]
         assert disabled.disabled
         assert disabled.style == discord.ButtonStyle.red
-    owner = next(iter(STAFF_USER_IDS))
+    owner = 123
     bot = SimpleNamespace()
     panel = ConfigurationPanel(bot, owner)
     assert len(panel.children) == 2

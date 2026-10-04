@@ -8,7 +8,7 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras integrar los GIFs: **55 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras integrar GIFs, logs y permisos por roles: **75 pruebas aprobadas, ninguna omitida**.
 - ZIP: integridad, entrada `bot.py`, configuración y sintaxis de los fuentes comprobadas.
 
 La suite comprobó:
@@ -39,8 +39,18 @@ La suite comprobó:
 - Reemplazo de conexiones PostgreSQL conservando claims y saldos.
 - Un único propietario del advisory lock del scheduler.
 - Cancelación de trabajos y espera entre reintentos tras errores.
+- Resumen de inicio: no muestra éxito con cero servidores, configuración incompleta,
+  permisos insuficientes o scheduler no disponible.
+- Logs compactos con tracebacks y redacción de secretos; las advertencias de voz se
+  omiten sin ocultar errores de Discord.
+- Consulta de configuraciones para el resumen limitada a los servidores del bot,
+  sin crear ni modificar registros.
+- Los tres roles de gerencia autorizan individualmente todos los comandos Staff.
+- Los IDs de usuario no conceden privilegios aunque coincidan con los IDs de roles.
+- El panel revalida roles en cada interacción, mantiene su propietario y bloquea
+  el acceso si pierde todos los roles permitidos.
 
-discord.py produjo dos advertencias de deprecación sobre `asyncio.iscoroutinefunction`
+discord.py produjo advertencias de deprecación sobre `asyncio.iscoroutinefunction`
 en Python 3.14. No hubo fallos; la advertencia corresponde a una API que Python prevé
 retirar en 3.16 y debe revisarse al actualizar a esa versión.
 

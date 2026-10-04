@@ -44,6 +44,13 @@ class Repository:
         )
         return [EventConfig.from_record(row) for row in rows]
 
+    async def guild_configs(self, guild_ids: list[int]) -> list[EventConfig]:
+        rows = await self.pool.fetch(
+            "SELECT * FROM event_config WHERE guild_id=ANY($1::bigint[]) ORDER BY guild_id,language",
+            guild_ids,
+        )
+        return [EventConfig.from_record(row) for row in rows]
+
     async def suspend(self, guild_id: int, language: Language) -> None:
         await self.pool.execute(
             "UPDATE event_config SET enabled=FALSE,next_drop_at=NULL,updated_at=now() "

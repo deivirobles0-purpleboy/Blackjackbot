@@ -218,3 +218,14 @@ async def test_only_one_scheduler_can_own_session_lock(repo):
             assert await second.fetchval("SELECT pg_try_advisory_lock($1)", INSTANCE_LOCK_KEY)
         finally:
             await second.execute("SELECT pg_advisory_unlock_all()")
+
+
+async def test_startup_config_summary_is_scoped_and_read_only(repo):
+    await ready(repo, Language.ES)
+    await ready(repo, Language.BR)
+    before = await repo.config(GUILD, Language.ES)
+    assert await repo.guild_configs([]) == []
+    assert await repo.guild_configs([GUILD + 1]) == []
+    rows = await repo.guild_configs([GUILD])
+    assert {cfg.language for cfg in rows} == {Language.ES, Language.BR}
+    assert await repo.config(GUILD, Language.ES) == before

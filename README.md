@@ -162,13 +162,19 @@ Los IDs se encuentran centralizados en `config/constants.py`.
 
 ## Staff y comandos
 
-La autorización se verifica en el servidor por Discord User ID, mediante un check
-compartido. Solo están autorizados:
+La autorización se verifica mediante un check compartido. Están autorizados los
+miembros que tengan **al menos uno** de estos Discord Role IDs de Staff/gerencia:
 
 - `1524778858329411774`
 - `1526645598961537064`
 - `1464644504903614629`
 
+Los tres IDs son roles y se centralizan en `STAFF_ROLE_IDS`, dentro de
+`config/constants.py`. No existe una lista de usuarios autorizados por ID.
+El check de comandos, botones,
+selectores y envío de Modals utiliza la misma autorización. Si se retira el rol,
+las siguientes interacciones dejan de estar autorizadas, salvo que conserve otro
+rol de Staff permitido. El panel sigue reservado al Staff que lo abrió.
 No se conceden excepciones por tener Administrator o un rol Staff diferente.
 
 | Comando | Función | Respuesta |
@@ -269,6 +275,27 @@ el timer ni la fecha de última puerta del sistema automático.
   URLs de conexión y contraseñas se redactan en logs.
 - El scheduler inspecciona vencimientos cada 5 segundos; el rango se respeta con ese
   pequeño margen de ejecución. ES y BR trabajan en tareas separadas.
+
+## Logs en Square Cloud
+
+Con `LOG_LEVEL=INFO`, el arranque muestra pasos breves con ✅, sin repetir la fecha,
+el nivel y el nombre de cada módulo; Square Cloud ya añade su propia fecha/hora.
+Se informa de PostgreSQL y esquema, botones persistentes, módulos, comandos, GIFs,
+Discord, servidores y scheduler. Después se muestran Canal, CD, estado y próxima
+aparición ES/BR, junto con la comprobación del permiso y jerarquía del rol Halloween.
+
+El mensaje `✅ Blackjack Conectado - 100% del inicio verificado` solo aparece después
+de un ciclo correcto del scheduler y de superar las comprobaciones de configuración.
+Describe esos controles de inicio, no garantiza que todas las operaciones futuras
+estén libres de errores. Si hay cero servidores, faltan Canal/CD o permisos, el
+resumen indica `Blackjack Conectado - configuración pendiente` y explica qué falta.
+Un idioma configurado e inactivo se informa como Inactivo; no se activa por mostrar logs.
+
+Se conservan advertencias, errores, tracebacks y la redacción de secretos. Se omiten
+los mensajes rutinarios de conexión internos de discord.py y las advertencias sobre
+PyNaCl/davey: este proyecto no utiliza funciones de voz. Para diagnóstico más detallado,
+establece `LOG_LEVEL=DEBUG` y reinicia. Las reconexiones y cambios de servidor producen
+una nueva comprobación; el resumen no se repite en cada ciclo del scheduler.
 
 ## Pruebas
 

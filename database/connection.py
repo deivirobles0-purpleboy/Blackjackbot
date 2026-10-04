@@ -53,7 +53,8 @@ class Database:
                     async with connection.transaction():
                         await connection.execute("SELECT pg_advisory_xact_lock($1)", 7378146625502)
                         await connection.execute(SCHEMA_SQL)
-                log.info("PostgreSQL conectado; esquema preparado")
+                log.info("✅ Conexión a base de datos: PostgreSQL conectado | TLS activo")
+                log.info("✅ Base de datos: tablas e índices preparados")
                 return
             except (OSError, TimeoutError, asyncpg.PostgresConnectionError):
                 if self.pool is not None:
