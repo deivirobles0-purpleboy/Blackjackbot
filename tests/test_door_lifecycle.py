@@ -24,15 +24,15 @@ async def make_overdue(repo, drop):
 
 @pytest.mark.postgres
 @pytest.mark.parametrize("language", list(Language))
-async def test_five_second_deadline_starts_on_publication_and_survives_reload(repo, language):
+async def test_six_second_deadline_starts_on_publication_and_survives_reload(repo, language):
     await ready(repo, language)
     drop = await repo.prepare_drop(GUILD, language, CHANNEL, is_test=True)
     assert drop.expires_at is None
     published = datetime.now(timezone.utc)
     await repo.bind_message(drop.id, 100, published_at=published)
-    assert (await repo.drop(drop.id)).expires_at == published + timedelta(seconds=5)
+    assert (await repo.drop(drop.id)).expires_at == published + timedelta(seconds=6)
     await repo.pool.execute("SELECT 1")
-    assert (await repo.drop(drop.id)).expires_at == published + timedelta(seconds=5)
+    assert (await repo.drop(drop.id)).expires_at == published + timedelta(seconds=6)
 
 
 @pytest.mark.postgres
@@ -50,14 +50,67 @@ async def test_late_first_click_never_changes_scores_even_before_timer_runs(repo
 
 
 @pytest.mark.postgres
-async def test_valid_first_click_removes_deadline_and_preserves_second_slot(repo):
+async def test_first_click_collects_until_second_click_starts_waiting(repo):
     drop = await door(repo)
     assert drop.expires_at is not None
     assert (await claim(repo, drop, 11)).status == ClaimStatus.ACCEPTED
-    assert (await repo.drop(drop.id)).expires_at is None
+    collecting = await repo.drop(drop.id)
+    assert collecting.expires_at == drop.expires_at
+    assert collecting.processing_at is None
+    assert await repo.begin_waiting(drop.id) is None
     assert await repo.expire_unopened(drop.id) is None
     assert (await claim(repo, drop, 12)).status == ClaimStatus.ACCEPTED
     assert (await repo.drop(drop.id)).status == DropStatus.PROCESSING
+    waiting = await repo.drop(drop.id)
+    assert waiting.expires_at is None
+    assert waiting.processing_at is not None
+    assert (await repo.begin_waiting(drop.id)).processing_at == waiting.processing_at
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("language", list(Language))
+@pytest.mark.parametrize("win", [True, False])
+async def test_collecting_single_participant_recovers_then_disables_waiting_button(
+    repo, monkeypatch, language, win
+):
+    await ready(repo, language)
+    await repo.set_probabilities(GUILD, language, 100 if win else 0, 0 if win else 100, STAFF)
+    if not win:
+        await repo.adjust(GUILD, 11, language, "add", 10, STAFF)
+    channel = FakeChannel()
+    mgr = manager(repo, channel)
+    drop = await repo.prepare_drop(GUILD, language, CHANNEL, is_test=True)
+    await mgr.run_drop(drop.id)
+    drop = await repo.drop(drop.id)
+    await claim(repo, drop, 11)
+    balances = [dict(row) for row in await repo.ranking(GUILD, language)]
+
+    restarted = manager(repo, channel)
+    scheduled = []
+
+    def capture(key, work):
+        scheduled.append(key)
+        work.close()
+
+    restarted.start_job = capture
+    await restarted.run_drop(drop.id)
+    assert scheduled == [f"collect:{drop.id}"]
+    assert channel.messages[drop.message_id].edits == []
+    assert (await repo.drop(drop.id)).expires_at == drop.expires_at
+    await make_overdue(repo, drop)
+    waiting = await repo.begin_waiting(drop.id)
+    assert waiting.processing_at is not None
+    assert (await claim(repo, drop, 12)).status == ClaimStatus.CLOSED
+    restarted._wait_for_result = AsyncMock()
+    await restarted.run_drop(drop.id)
+    message = channel.messages[drop.message_id]
+    assert message.edits[0]["embed"].description == TEXTS[language].waiting
+    assert message.edits[0]["view"].children[0].disabled
+    assert message.edits[1]["view"] is None
+    assert "<@11>" in message.edits[1]["embed"].description
+    assert "<@12>" not in message.edits[1]["embed"].description
+    assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
+    assert channel.sends == 1
 
 
 @pytest.mark.postgres
@@ -187,7 +240,7 @@ async def test_scheduler_recovers_open_expiration_and_pending_deletions():
         now,
         None,
         None,
-        expires_at=now + timedelta(seconds=5),
+        expires_at=now + timedelta(seconds=6),
     )
     expired = DoorDrop(
         uuid4(), 1, Language.ES, 2, 4, DropStatus.EXPIRED, False, True, now, None, now
@@ -235,7 +288,7 @@ async def test_runtime_expiration_waits_for_persisted_deadline():
     mgr._wait_until = AsyncMock()
     mgr.run_drop = AsyncMock()
     drop_id = uuid4()
-    deadline = datetime.now(timezone.utc) + timedelta(seconds=5)
+    deadline = datetime.now(timezone.utc) + timedelta(seconds=6)
     await mgr._expire_at(drop_id, deadline)
     mgr._wait_until.assert_awaited_once_with(deadline)
     mgr.run_drop.assert_awaited_once_with(drop_id)

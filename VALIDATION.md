@@ -8,7 +8,7 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras ajustar apertura, espera e imagen de vencimiento: **172 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras separar recepción de participantes y espera: **176 pruebas aprobadas, ninguna omitida**.
 - Cambio de `/porta_de_teste`: **15 pruebas del comando y componentes aprobadas**, incluidas
   7 nuevas regresiones. Se elimina la respuesta temporal tras publicar, sin confirmación privada
   ni enlace; se conservan los errores de publicación para el manejador habitual.
@@ -21,7 +21,7 @@ La suite comprobó:
 - Elegibilidad por rol y registro por roles verificados.
 - Registro idempotente y rechazo controlado cuando faltan permisos de roles.
 - Diez comandos Slash, opciones ES/BR, paneles, Modal y ChannelSelect.
-- Views persistentes e IDs estables; botón de espera activo con un cupo libre y rojo desactivado al completar dos.
+- Views persistentes e IDs estables; botón activo al recibir participantes y rojo desactivado durante la espera.
 - Imágenes separadas por idioma y fase mediante URLs ficticias en tests.
 - GIFs integrados: Puerta para cierre/espera, Dulces para ganar y Roba para perder ES/BR.
 - Variables CANDY_WIN/CANDY_LOSE independientes y compatibilidad con RESULT; el nombre nuevo tiene prioridad.
@@ -35,10 +35,11 @@ La suite comprobó:
 - Dos puertas concurrentes no sobregiran el mismo saldo; claims duplicados y reinicios no vuelven a descontar.
 - Rollback de pérdidas si falla guardar la participación; simulaciones mantienen saldos intactos.
 - Migración repetible desde el esquema anterior conserva puntuaciones y puertas activas.
-- Plazo de 5 segundos desde la publicación para el primer participante válido;
+- Plazo de 6 segundos desde la publicación para recibir participantes;
   clics tardíos no cambian puntuaciones aunque el temporizador aún no haya editado Discord.
-- El primer clic válido cancela el plazo y admite el segundo cupo durante 5 segundos; usuarios no registrados
-  no prolongan el tiempo. Carrera entre vencimiento y clics sin premios duplicados.
+- El primer clic conserva la puerta abierta hasta completar los 6 segundos originales; el segundo
+  inicia la fase de espera inmediatamente. Con uno al vencer el plazo, también se resuelve.
+  Usuarios no registrados no prolongan el tiempo. Carrera entre vencimiento y clics sin premios duplicados.
 - Puerta vencida: mensaje y respuesta efímera ES/BR, botón rojo informativo y borrado a los 10 segundos.
 - Imagen Vencida.png integrada para puertas vencidas, con variables ES_DOOR_TIMEOUT y BR_DOOR_TIMEOUT;
   ausentes o vacías usan el valor predeterminado y las sustituciones son independientes por idioma.
@@ -51,14 +52,19 @@ La suite comprobó:
 - Clics del botón sin confirmaciones ni resultados efímeros para los dos participantes aceptados.
 - Flujo completo por botón en ES/BR, ganar/perder y prueba real/simulada: un único envío público,
   mismo Message ID, GIF por fase y resultado final con título, descripción y footer correspondientes.
-- Espera de 5 segundos desde aceptar al primer usuario, con cuenta original conservada tras reinicios.
+- Espera de 5 segundos desde cerrar cupos, con cuenta original conservada tras reinicios.
+- Fase de espera con Abrir desactivado para uno o dos participantes; resultados sin botón.
+- Descripción BR de pérdida: «Infelizmente, o Gatinho Múmia levou alguns dos teus doces com ele...».
 - Regresión del bloqueo con un solo clic reproducida antes de corregir: la fase de espera no aparecía.
 - Ocho pruebas completas con tareas de fondo y temporizadores reales (sin sustituir sleep ni avanzar
-  fases manualmente): ES/BR, ganar/perder y uno/dos participantes. Resultado observado alrededor de los 5 segundos.
+  fases manualmente): ES/BR, ganar/perder y uno/dos participantes. Espera observada al completar
+  dos cupos o finalizar los 6 segundos; resultado observado 5 segundos después.
 - En las ocho combinaciones, el borrado queda programado para 20 segundos después de la edición final,
-  y el mensaje sigue presente al mostrarse el resultado. El segundo clic después de 4 segundos aún se admite ES/BR.
+  y el mensaje sigue presente al mostrarse el resultado. Un segundo clic antes de 6 segundos aún se admite ES/BR.
 - Un chequeo OPEN que sigue ejecutándose no absorbe la tarea de resolución del primer clic.
-- El segundo clic no reinicia el contador; clics fuera del plazo se rechazan antes de modificar saldos.
+- Cerrar cupos inicia el contador de recompensa; reintentos no lo reinician.
+  Clics fuera del plazo o durante la espera se rechazan antes de modificar saldos.
+- Reinicio durante la recepción de un participante conserva plazo y saldo, y resuelve al cerrar cupos.
 - Migración de puertas antiguas abiertas con un solo participante y resolución tras reinicio sin volver a pagar.
 - URL de Puerta comprobada previamente mediante GET parcial: HTTP 206, `image/gif` y firma GIF válida.
 - 40 claims simultáneos: exactamente dos ganadores distintos y saldos coherentes.

@@ -80,20 +80,32 @@ async def test_live_first_click_progresses_without_manual_run_or_fake_timers(
         mgr.start_job(str(drop.id), pending_open_check())
         started = time.monotonic()
         first = await click(mgr, message, drop, 11)
-        async with asyncio.timeout(1.5):
+        first.followup.send.assert_not_awaited()
+        assert not any(
+            edit.get("embed") and edit["embed"].description == TEXTS[language].waiting
+            for edit in message.edits
+        )
+        assert (await repo.drop(drop.id)).processing_at is None
+        if participants == 2:
+            second = await click(mgr, message, drop, 12)
+            second.followup.send.assert_not_awaited()
+        async with asyncio.timeout(7):
             while not any(
                 edit.get("embed") and edit["embed"].description == TEXTS[language].waiting
                 for edit in message.edits
             ):
                 await asyncio.sleep(0.02)
-        first.followup.send.assert_not_awaited()
-        if participants == 2:
-            second = await click(mgr, message, drop, 12)
-            second.followup.send.assert_not_awaited()
+        waiting = await repo.drop(drop.id)
+        assert waiting.processing_at is not None
+        waiting_edit = [edit for edit in message.edits if edit.get("embed")][-1]
+        assert waiting_edit["view"].children[0].disabled
+        waiting_started = time.monotonic()
+        if participants == 1:
+            assert 5.8 <= waiting_started - started < 7.5
         async with asyncio.timeout(6):
             while (await repo.drop(drop.id)).status != DropStatus.FINISHED:
                 await asyncio.sleep(0.03)
-        elapsed = time.monotonic() - started
+        elapsed = time.monotonic() - waiting_started
         assert 4.8 <= elapsed < 6.5
         final = [edit["embed"] for edit in message.edits if edit.get("embed")][-1]
         assert final.image.url == getattr(
@@ -114,14 +126,16 @@ async def test_live_first_click_progresses_without_manual_run_or_fake_timers(
 
 
 @pytest.mark.postgres
-async def test_second_participant_does_not_restart_five_second_deadline(repo):
+async def test_second_participant_starts_waiting_and_retry_preserves_deadline(repo):
     from tests.test_postgres import claim, door
 
     drop = await door(repo)
     await claim(repo, drop, 11)
-    started = (await repo.drop(drop.id)).processing_at
+    assert (await repo.drop(drop.id)).processing_at is None
     await claim(repo, drop, 12)
-    assert (await repo.drop(drop.id)).processing_at == started
+    started = (await repo.drop(drop.id)).processing_at
+    assert started is not None
+    assert (await repo.begin_waiting(drop.id)).processing_at == started
     assert len(await repo.winners(drop.id)) == 2
 
 
@@ -133,7 +147,7 @@ async def test_late_second_click_is_rejected_even_when_result_job_is_delayed(rep
     drop = await door(repo)
     first = await claim(repo, drop, 11)
     await repo.pool.execute(
-        "UPDATE door_drops SET processing_at=clock_timestamp()-interval '5 seconds' WHERE id=$1",
+        "UPDATE door_drops SET expires_at=clock_timestamp()-interval '1 microsecond' WHERE id=$1",
         drop.id,
     )
     assert (await claim(repo, drop, 12)).status == ClaimStatus.CLOSED
@@ -143,14 +157,14 @@ async def test_late_second_click_is_rejected_even_when_result_job_is_delayed(rep
 
 @pytest.mark.postgres
 @pytest.mark.parametrize("language", list(Language))
-async def test_second_click_after_four_seconds_is_still_accepted(repo, language):
+async def test_second_click_before_six_seconds_is_still_accepted(repo, language):
     from halloween.models import ClaimStatus
     from tests.test_postgres import claim, door
 
     drop = await door(repo, language)
     await claim(repo, drop, 11)
     await repo.pool.execute(
-        "UPDATE door_drops SET processing_at=clock_timestamp()-interval '4.1 seconds' WHERE id=$1",
+        "UPDATE door_drops SET expires_at=clock_timestamp()+interval '500 milliseconds' WHERE id=$1",
         drop.id,
     )
     assert (await claim(repo, drop, 12)).status == ClaimStatus.ACCEPTED

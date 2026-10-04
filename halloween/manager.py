@@ -80,7 +80,7 @@ class DoorManager:
         await asyncio.sleep(delay)
 
     async def _wait_for_result(self, drop: DoorDrop) -> None:
-        # Continue the first participant's countdown after a restart.
+        # Continue the waiting phase's countdown after a restart.
         started = drop.processing_at or datetime.now(timezone.utc)
         await self._wait_until(started + timedelta(seconds=RESULT_REVEAL_SECONDS))
 
@@ -93,6 +93,20 @@ class DoorManager:
         expired = await self.repo.expire_unopened(drop_id)
         if expired is not None:
             await self.run_drop(drop_id)
+
+    def schedule_collection(self, drop: DoorDrop) -> None:
+        if (
+            drop.status == DropStatus.PROCESSING
+            and drop.processing_at is None
+            and drop.expires_at is not None
+        ):
+            self.start_job(f"collect:{drop.id}", self._collect_at(drop.id, drop.expires_at))
+
+    async def _collect_at(self, drop_id: UUID, deadline: datetime) -> None:
+        await self._wait_until(deadline)
+        self.require_leader()
+        if await self.repo.begin_waiting(drop_id) is not None:
+            self.start_job(f"resolve:{drop_id}", self.run_drop(drop_id))
 
     def schedule_deletion(self, drop: DoorDrop) -> None:
         if drop.delete_at is not None and drop.deleted_at is None:
@@ -174,6 +188,12 @@ class DoorManager:
                 return
             if drop.deleted_at is not None:
                 return
+            if drop.status == DropStatus.PROCESSING and drop.processing_at is None:
+                ready = await self.repo.begin_waiting(drop.id)
+                if ready is None:
+                    self.schedule_collection(drop)
+                    return
+                drop = ready
             if drop.status == DropStatus.OPEN:
                 expired = await self.repo.expire_unopened(drop.id)
                 if expired:
@@ -247,9 +267,7 @@ class DoorManager:
                 participants = await self.repo.winners(drop.id)
                 await message.edit(
                     embed=door_embed(drop, "waiting", self.settings),
-                    view=DoorView(
-                        drop.language, drop.id, disabled=len(participants) >= MAX_WINNERS
-                    ),
+                    view=DoorView(drop.language, drop.id, disabled=True),
                     allowed_mentions=discord.AllowedMentions.none(),
                 )
                 log.info(
@@ -277,7 +295,7 @@ class DoorManager:
                     await self.repo.suspend(drop.guild_id, drop.language)
                 await self.repo.finish(drop.id, cancelled=True)
                 return
-        # Keep the lock free during collection so the second participant can join.
+        # Keep the lock free while waiting; stale clicks are rejected by the database.
         await self._wait_for_result(drop)
         self.require_leader()
         async with self._lock(drop_id):
@@ -357,8 +375,10 @@ class DoorManager:
                     result.candies,
                     result.count,
                 )
-                self.start_job(f"resolve:{drop_id}", self.run_drop(drop_id))
+                if result.count < MAX_WINNERS:
+                    self.schedule_collection(await self.repo.drop(drop_id))
                 if result.count == MAX_WINNERS:
+                    self.start_job(f"resolve:{drop_id}", self.run_drop(drop_id))
                     try:
                         await interaction.edit_original_response(
                             view=DoorView(language, drop_id, disabled=True)

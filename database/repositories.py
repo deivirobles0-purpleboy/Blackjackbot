@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import random
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import asyncpg
@@ -12,7 +12,6 @@ from config.constants import (
     DOOR_OPEN_SECONDS,
     EXPIRED_DELETE_SECONDS,
     MAX_WINNERS,
-    RESULT_REVEAL_SECONDS,
 )
 from halloween.models import (
     ClaimResult,
@@ -368,11 +367,11 @@ class Repository:
                 if now >= row["expires_at"]:
                     return ClaimResult(ClaimStatus.EXPIRED)
             if row["status"] == "processing":
-                now = await con.fetchval("SELECT clock_timestamp()")
-                if row["processing_at"] is None or now >= row["processing_at"] + timedelta(
-                    seconds=RESULT_REVEAL_SECONDS
-                ):
-                    return ClaimResult(ClaimStatus.CLOSED)
+                # Processing without a timestamp still collects the second participant.
+                if row["processing_at"] is None:
+                    now = await con.fetchval("SELECT clock_timestamp()")
+                    if row["expires_at"] is None or now >= row["expires_at"]:
+                        return ClaimResult(ClaimStatus.CLOSED)
             if not eligible:
                 return ClaimResult(ClaimStatus.UNREGISTERED)
             if await con.fetchval(
@@ -381,6 +380,8 @@ class Repository:
                 user_id,
             ):
                 return ClaimResult(ClaimStatus.DUPLICATE)
+            if row["status"] == "processing" and row["processing_at"] is not None:
+                return ClaimResult(ClaimStatus.CLOSED)
             count = await con.fetchval(
                 "SELECT count(*) FROM door_winners WHERE drop_id=$1", drop_id
             )
@@ -423,11 +424,36 @@ class Repository:
             )
             if count == 0:
                 await con.execute(
-                    "UPDATE door_drops SET status='processing',expires_at=NULL,"
-                    "processing_at=clock_timestamp() WHERE id=$1",
+                    "UPDATE door_drops SET status='processing' WHERE id=$1",
+                    drop_id,
+                )
+            else:
+                await con.execute(
+                    "UPDATE door_drops SET expires_at=NULL,processing_at=clock_timestamp() WHERE id=$1",
                     drop_id,
                 )
             return ClaimResult(ClaimStatus.ACCEPTED, candies, count + 1)
+
+    async def begin_waiting(self, drop_id: UUID) -> DoorDrop | None:
+        """Close collection once full or overdue, preserving the result deadline on retry."""
+        async with self.pool.acquire() as con, con.transaction():
+            row = await con.fetchrow("SELECT * FROM door_drops WHERE id=$1 FOR UPDATE", drop_id)
+            if not row or row["status"] != "processing":
+                return None
+            if row["processing_at"] is not None:
+                return DoorDrop.from_record(row)
+            count = await con.fetchval(
+                "SELECT count(*) FROM door_winners WHERE drop_id=$1", drop_id
+            )
+            now = await con.fetchval("SELECT clock_timestamp()")
+            if count < MAX_WINNERS and row["expires_at"] is not None and now < row["expires_at"]:
+                return None
+            row = await con.fetchrow(
+                "UPDATE door_drops SET expires_at=NULL,processing_at=clock_timestamp() "
+                "WHERE id=$1 RETURNING *",
+                drop_id,
+            )
+            return DoorDrop.from_record(row)
 
     async def winners(self, drop_id: UUID) -> list[asyncpg.Record]:
         return await self.pool.fetch(

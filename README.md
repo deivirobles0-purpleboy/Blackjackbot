@@ -254,10 +254,11 @@ en su canal original.
    1–5 dulces. En una derrota, cada usuario pierde una cantidad aleatoria independiente
    de 2–5 dulces, limitada por su saldo: nunca baja de cero. Participación y cambio
    de saldo se guardan en una misma transacción, sin esperar al segundo usuario.
-4. El primer clic válido inicia una ventana de 5 segundos y edita **el mismo mensaje**
-   a espera con su GIF. El botón permite entrar a un segundo usuario durante ese
-   plazo. Al completar los dos cupos pasa a rojo desactivado.
-5. A los 5 segundos desde aceptar al primer usuario, se vuelve a editar **ese mismo Message ID** para mostrar
+4. La puerta recibe hasta dos participantes durante 6 segundos desde su publicación.
+   El primer clic mantiene la puerta abierta. Al entrar el segundo, o al terminar
+   los 6 segundos con un participante, se edita **el mismo mensaje** a «Esperando recompensas»
+   con su GIF y el botón Abrir rojo desactivado. Sin participantes, la puerta vence.
+5. A los 5 segundos desde iniciar la fase de espera, se vuelve a editar **ese mismo Message ID** para mostrar
    participantes y el GIF de ganar o perder, eliminando el botón. El embed de derrota
    muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
    conservan el footer del top correspondiente al idioma. El resultado se publica
@@ -273,7 +274,7 @@ Un cambio de probabilidades afecta a las nuevas puertas. Las ya creadas conserva
 su resultado, incluso tras reinicios. El top consulta los saldos confirmados en
 PostgreSQL y refleja premios y descuentos en la siguiente consulta.
 
-Desde su publicación, una puerta admite el primer clic válido durante **5 segundos**.
+Desde su publicación, una puerta admite participantes durante **6 segundos**.
 Si nadie registrado abre a tiempo, vence sin premios ni descuentos y se programa
 la siguiente aparición automática. El botón pasa a rojo y solo responde en privado
 `Puerta Vencida, espera la proxima...` (ES) o `Porta expirou, aguarde pela proxima...`
@@ -281,10 +282,10 @@ la siguiente aparición automática. El botón pasa a rojo y solo responde en pr
 el clic exclusivamente para informar del vencimiento y no admite participantes.
 El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
 
-Si el primer usuario válido abre dentro del plazo, se cancela el vencimiento y la
-puerta admite un segundo participante durante los 5 segundos siguientes. Su clic
-no reinicia el contador. Clics después del plazo se rechazan aunque la publicación
-del resultado sufra un retraso de conexión. El resultado final, tanto al ganar
+Con un participante, la puerta sigue abierta hasta completar los 6 segundos originales.
+Con dos, inicia la fase de espera inmediatamente. Durante esa fase, Abrir está
+desactivado y se rechazan clics antiguos antes de modificar saldos. La espera de
+recompensas dura 5 segundos y se recupera tras reinicios. El resultado final, tanto al ganar
 como al perder, se elimina **20 segundos después de publicarse**. Los plazos y el
 estado del borrado se guardan en PostgreSQL y se recuperan al reiniciar, conservando
 las puntuaciones. Los borrados pendientes de mensajes ya finalizados se recuperan
@@ -303,8 +304,9 @@ el timer ni la fecha de última puerta del sistema automático.
 ## Concurrencia, recuperación y errores
 
 - Lock local por puerta y `SELECT FOR UPDATE` para ordenar claims.
-- El lock local se libera durante la espera de 5 segundos para que pueda entrar
-  el segundo participante. La resolución usa una tarea separada de los chequeos de puertas abiertas.
+- La recepción de participantes conserva el plazo de 6 segundos de publicación.
+  Al cerrar cupos se inicia una espera de 5 segundos con Abrir desactivado.
+  La resolución usa una tarea separada de los chequeos de puertas abiertas.
 - La actualización del esquema recupera puertas de la versión anterior que quedaron
   abiertas con un solo participante; conserva las puntuaciones ya confirmadas.
 - Unicidad `(drop_id,user_id)` y `(drop_id,slot)`; PostgreSQL solo admite slots 1–2.

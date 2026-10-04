@@ -82,7 +82,9 @@ class Scheduler:
             check_open = time.monotonic() - self._open_checked.get(drop.id, -100) >= 60
             if drop.status != DropStatus.OPEN or check_open:
                 self.manager.start_job(
-                    f"resolve:{drop.id}" if drop.status == DropStatus.PROCESSING else str(drop.id),
+                    f"resolve:{drop.id}"
+                    if drop.status == DropStatus.PROCESSING and drop.processing_at is not None
+                    else str(drop.id),
                     self.manager.run_drop(drop.id, check_open=check_open),
                 )
                 if check_open:
