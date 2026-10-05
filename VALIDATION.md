@@ -11,6 +11,9 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - Suite completa con PostgreSQL tras separar recepción de participantes y espera: **176 pruebas aprobadas, ninguna omitida**.
 - Cambio posterior de unidades a `<:doce:1556451862969065512>`: **51 pruebas de componentes,
   flujo y recompensas aprobadas**; ranking ES/BR comprobado por separado con el emoji exacto.
+- Activación y botón de puerta vencida: **28 pruebas de componentes y ciclo de vida aprobadas**.
+  Respuesta de activación verificada con ambos idiomas, solo BR, solo ES y ninguno;
+  el emoji check aparece únicamente junto a idiomas activados.
 - Cambio de `/porta_de_teste`: **15 pruebas del comando y componentes aprobadas**, incluidas
   7 nuevas regresiones. Se elimina la respuesta temporal tras publicar, sin confirmación privada
   ni enlace; se conservan los errores de publicación para el manejador habitual.
@@ -43,7 +46,8 @@ La suite comprobó:
 - El primer clic conserva la puerta abierta hasta completar los 6 segundos originales; el segundo
   inicia la fase de espera inmediatamente. Con uno al vencer el plazo, también se resuelve.
   Usuarios no registrados no prolongan el tiempo. Carrera entre vencimiento y clics sin premios duplicados.
-- Puerta vencida: mensaje y respuesta efímera ES/BR, botón rojo informativo y borrado a los 10 segundos.
+- Puerta vencida: aviso ES/BR, botón rojo desactivado con etiqueta «Que pena» y borrado a los 10 segundos.
+  Clics enviados antes de la edición que llegan tarde siguen rechazándose en privado.
 - Imagen Vencida.png integrada para puertas vencidas, con variables ES_DOOR_TIMEOUT y BR_DOOR_TIMEOUT;
   ausentes o vacías usan el valor predeterminado y las sustituciones son independientes por idioma.
 - Resultado ganar/perder ES/BR: borrado a los 20 segundos, conservando saldos confirmados.

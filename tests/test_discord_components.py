@@ -81,6 +81,10 @@ async def test_persistent_views_ids_and_channel_select():
         disabled = DoorView(language, drop_id, disabled=True).children[0]
         assert disabled.disabled
         assert disabled.style == discord.ButtonStyle.red
+        expired = DoorView(language, drop_id, expired=True).children[0]
+        assert expired.disabled
+        assert expired.label == "Que pena"
+        assert expired.style == discord.ButtonStyle.red
     owner = 123
     bot = SimpleNamespace()
     panel = ConfigurationPanel(bot, owner)

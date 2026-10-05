@@ -11,6 +11,7 @@ from config.settings import DEFAULT_DOOR_TIMEOUT_URL
 from halloween.models import ClaimStatus, DoorDrop, DropStatus, Language
 from halloween.scheduler import Scheduler
 from halloween.texts import TEXTS
+from halloween.views import DoorView
 from tests.test_flow import FakeChannel, manager
 from tests.test_postgres import CHANNEL, GUILD, STAFF, claim, door, ready
 
@@ -172,8 +173,9 @@ async def test_expired_notice_and_ten_second_cleanup_recover_after_restart(
     assert message.edits[0]["embed"].description == TEXTS[language].expired
     assert message.edits[0]["embed"].image.url == DEFAULT_DOOR_TIMEOUT_URL
     button = message.edits[0]["view"].children[0]
-    assert button.item.style == discord.ButtonStyle.red
-    assert not button.item.disabled  # Delivery stays enabled only for the expiration notice.
+    assert button.style == discord.ButtonStyle.red
+    assert button.disabled
+    assert button.label == "Que pena"
     assert 9 <= (expired.delete_at - expired.finished_at).total_seconds() <= 11
     await restarted.run_drop(drop.id)
     assert (await repo.drop(drop.id)).delete_at == expired.delete_at
@@ -187,7 +189,8 @@ async def test_expired_notice_and_ten_second_cleanup_recover_after_restart(
         response=SimpleNamespace(defer=AsyncMock()),
         followup=SimpleNamespace(send=AsyncMock()),
     )
-    await button.callback(interaction)
+    # A click sent before the edit can still arrive; the database rejects it.
+    await DoorView(language, drop.id).children[0].callback(interaction)
     interaction.followup.send.assert_awaited_once_with(TEXTS[language].expired, ephemeral=True)
     assert await repo.winners(drop.id) == []
     await repo.pool.execute(

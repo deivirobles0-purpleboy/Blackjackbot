@@ -229,6 +229,8 @@ saldos y los timers del evento sí permanecen en PostgreSQL.
    próxima aparición y minutos reales desde la última puerta. No altera ajustes.
    También muestra las probabilidades guardadas.
 7. Ejecuta `/ativar_doces`. Solo se activan idiomas completos; se informa cuáles faltan.
+   La respuesta muestra `SISTEMA DE DOCES ATIVADO:` y las filas BR/ES con
+   `<:check:1532500942237339728>` para los idiomas activados.
 
 El panel tiene 10 minutos de duración y solo lo puede operar el Staff que lo abrió.
 Al guardar Canal, CD o Probabilidad, el mismo embed vuelve automáticamente al menú
@@ -278,10 +280,9 @@ PostgreSQL y refleja premios y descuentos en la siguiente consulta.
 
 Desde su publicación, una puerta admite participantes durante **6 segundos**.
 Si nadie registrado abre a tiempo, vence sin premios ni descuentos y se programa
-la siguiente aparición automática. El botón pasa a rojo y solo responde en privado
-`Puerta Vencida, espera la proxima...` (ES) o `Porta expirou, aguarde pela proxima...`
-(BR). Discord no envía interacciones de botones deshabilitados: este botón conserva
-el clic exclusivamente para informar del vencimiento y no admite participantes.
+la siguiente aparición automática. El botón pasa a rojo desactivado y cambia su
+etiqueta a `Que pena` en ES y BR. El embed muestra el aviso de puerta vencida y su imagen.
+Si un clic anterior a la edición llega tarde, se rechaza en privado sin admitir participantes.
 El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
 
 Con un participante, la puerta sigue abierta hasta completar los 6 segundos originales.

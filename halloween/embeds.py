@@ -54,7 +54,11 @@ def ranking_embed(language: Language, rows: Sequence[Mapping]) -> discord.Embed:
         or text.empty_ranking
     )
     return discord.Embed(
-        title="🎃 Ranking Evento de Halloween! 🎃", description=description, color=0xF28C28
+        title="🎃 Ranking Evento de Dulces !🎃"
+        if language == Language.ES
+        else "🎃Ranking Evento de Doces🎃",
+        description=description,
+        color=0xF28C28,
     )
 
 

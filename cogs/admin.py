@@ -35,13 +35,16 @@ class Admin(commands.Cog):
             languages,
         )
         message = (
-            ("Sistemas activos: " + ", ".join(languages))
-            if languages
-            else "No hay sistemas configurados."
+            "**SISTEMA DE DOCES ATIVADO:**" if languages else "**SISTEMA DE DOCES NÃO ATIVADO:**"
         )
+        for language in (Language.BR, Language.ES):
+            status = (
+                "<:check:1532500942237339728>" if language in languages else "Configuração pendente"
+            )
+            message += f"\n**{language.value}:** {status}"
         missing = [language.value for language in Language if language not in languages]
         if missing:
-            message += " Configura Canal y CD en /config_doces: " + ", ".join(missing)
+            message += "\n\nConfigura Canal y CD en /config_doces: " + ", ".join(missing)
         await interaction.followup.send(message)
 
     @app_commands.command(
@@ -54,8 +57,8 @@ class Admin(commands.Cog):
         await self.bot.repo.set_enabled(interaction.guild_id, False, interaction.user.id)
         log.info("Desactivación guild=%s admin=%s", interaction.guild_id, interaction.user.id)
         await interaction.followup.send(
-            "Sistemas ES/BR desactivados. Apariciones pendientes canceladas. "
-            "Las puertas ya publicadas permiten terminar su participación."
+            "Sistemas ES/BR desativados. Próximas aparições canceladas. "
+            "As portas já publicadas continuam disponíveis para concluir a participação."
         )
 
     async def _adjust(

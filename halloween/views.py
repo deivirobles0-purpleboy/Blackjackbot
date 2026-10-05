@@ -46,19 +46,14 @@ class DoorView(SafeView):
         self, language: Language, drop_id: UUID, *, disabled: bool = False, expired: bool = False
     ) -> None:
         super().__init__(timeout=None)
-        if disabled:
+        if disabled or expired:
             self.add_item(
                 discord.ui.Button(
-                    label="Abrir",
+                    label="Que pena" if expired else "Abrir",
                     style=discord.ButtonStyle.red,
                     disabled=True,
                     custom_id=door_custom_id(language, drop_id),
                 )
             )
         else:
-            button = DoorButton(language, drop_id)
-            if expired:
-                # Keep interaction delivery for the ephemeral expiration notice.
-                # The repository rejects all claims on expired doors.
-                button.item.style = discord.ButtonStyle.red
-            self.add_item(button)
+            self.add_item(DoorButton(language, drop_id))
