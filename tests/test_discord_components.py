@@ -50,7 +50,7 @@ async def test_load_all_cogs_and_slash_choices_offline():
             "abrir_registro_halloween",
             "ativar_doces",
             "desativar_doces",
-            "resetar_doces",
+            "reset_doces",
             "adicionar_doces",
             "tirar_doces",
             "porta_de_teste",

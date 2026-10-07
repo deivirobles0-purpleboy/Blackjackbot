@@ -12,9 +12,14 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - Borrado posterior del ranking: **15 pruebas de ranking, cooldown y componentes aprobadas**;
   programación de borrado a los 60 segundos comprobada también con rankings vacíos ES/BR.
 - Reset individual/completo: **44 pruebas de comandos, permisos y PostgreSQL aprobadas**,
-  incluidas 13 verificaciones nuevas. `user` y `all` son opciones del selector opcional;
+  incluidas 13 verificaciones de la primera versión del selector;
   el reset completo incluye usuarios fuera del top 15, respeta idioma/servidor y registra auditoría.
   Si falla la auditoría, la transacción conserva los saldos.
+- La versión actual usa `/reset_doces idioma destino`: solo dos campos, con autocompletado
+  para usuarios o `all`, y soporte de mención/ID. La búsqueda valida el rol Staff, limita
+  las sugerencias y conserva opciones en caché si falla Discord; destinos inválidos nunca resetean saldos.
+  **61 pruebas de reset, permisos, comandos y PostgreSQL aprobadas**; payload de registro
+  comprobado con exactamente `idioma` y `destino`.
 - Cambio posterior de unidades a `<:doce:1556451862969065512>`: **51 pruebas de componentes,
   flujo y recompensas aprobadas**; ranking ES/BR comprobado por separado con el emoji exacto.
 - Activación y botón de puerta vencida: **28 pruebas de componentes y ciclo de vida aprobadas**.
