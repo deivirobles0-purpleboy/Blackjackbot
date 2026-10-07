@@ -529,6 +529,18 @@ class Repository:
             await self._audit(con, guild_id, admin_id, language, action, user_id, amount)
             return total
 
+    async def reset_ranking(self, guild_id: int, language: Language, admin_id: int) -> int:
+        async with self.pool.acquire() as con, con.transaction():
+            result = await con.execute(
+                "UPDATE user_candies SET candies=0,updated_at=now() "
+                "WHERE guild_id=$1 AND language=$2 AND candies>0",
+                guild_id,
+                language,
+            )
+            count = int(result.rsplit(" ", 1)[1])
+            await self._audit(con, guild_id, admin_id, language, "reset_all", amount=count)
+            return count
+
     @staticmethod
     async def _audit(
         con: asyncpg.Connection,

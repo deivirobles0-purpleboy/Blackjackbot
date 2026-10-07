@@ -198,7 +198,7 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 | `/config_doces` | Panel Staff con Español/Português | Privada |
 | `/ativar_doces` | Activar idiomas con Canal y CD completos | Pública |
 | `/desativar_doces` | Desactivar ambos y cancelar apariciones pendientes | Pública |
-| `/resetar_doces user idioma` | Poner saldo a cero | Privada |
+| `/resetar_doces idioma opcao user` | Poner saldo de un usuario o todo el ranking a cero | Privada |
 | `/adicionar_doces user quantidade idioma` | Agregar cantidad positiva | Pública |
 | `/tirar_doces user quantidade idioma` | Restar sin bajar de cero | Pública |
 | `/porta_de_teste canal idioma recompensa_real` | Puerta de prueba aislada | Solo puerta pública; sin confirmación privada ni enlace al mensaje |
@@ -206,7 +206,16 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 Los cambios manuales, activaciones y ajustes quedan registrados en `admin_logs`,
 incluido el ID del responsable. Las cantidades se modifican atómicamente.
 
+`opcao` es un selector opcional `user` / `all`
+(por defecto `user`) y `user` es opcional: para un reset individual debes elegirlo;
+para `all`, déjalo vacío. El reset completo afecta únicamente al idioma y servidor seleccionados.
+
 Rankings: orden descendente por dulces; los empates se ordenan por User ID ascendente.
+Los mensajes de `/doces` y `/dulces` se eliminan automáticamente 60 segundos después
+de publicarse, incluido un ranking vacío.
+Los usuarios aparecen con su apodo del servidor, sin menciones. Si no tienen apodo,
+se usa su nombre visible; los miembros ausentes se consultan para recuperar su nombre
+y una cuenta que ya no se puede consultar aparece como usuario desconocido.
 Las cantidades del ranking, premios y robos usan `<:doce:1556451862969065512>` como unidad
 en ES y BR; por ejemplo, `<@usuario>: 4 <:doce:1556451862969065512>`.
 Se omiten saldos cero. Cada comando tiene cooldown independiente de 30 segundos por
@@ -271,8 +280,9 @@ en su canal original.
 
 El clic aceptado se confirma silenciosamente: no se envía un resultado ni una
 confirmación de recompensa efímera. Puerta cerrada, espera y resultado se muestran
-editando el mismo embed público con su GIF correspondiente. Los avisos de falta de
-registro, clic duplicado, puerta cerrada o vencida sí son privados.
+editando el mismo embed público con su GIF correspondiente. Clics duplicados o de
+puertas cerradas/vencidas se reconocen silenciosamente, sin mensajes privados.
+El aviso de falta de registro continúa siendo privado y no consume cupo.
 
 Un cambio de probabilidades afecta a las nuevas puertas. Las ya creadas conservan
 su resultado, incluso tras reinicios. El top consulta los saldos confirmados en
@@ -282,7 +292,8 @@ Desde su publicación, una puerta admite participantes durante **6 segundos**.
 Si nadie registrado abre a tiempo, vence sin premios ni descuentos y se programa
 la siguiente aparición automática. El botón pasa a rojo desactivado y cambia su
 etiqueta a `Que pena` en ES y BR. El embed muestra el aviso de puerta vencida y su imagen.
-Si un clic anterior a la edición llega tarde, se rechaza en privado sin admitir participantes.
+Si un clic anterior a la edición llega tarde, se ignora sin admitir participantes
+ni enviar avisos efímeros. El vencimiento se muestra únicamente en el embed público.
 El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
 
 Con un participante, la puerta sigue abierta hasta completar los 6 segundos originales.

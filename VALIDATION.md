@@ -1,4 +1,4 @@
-# Validación local — 4 de octubre de 2026
+# Validación local — 7 de octubre de 2026
 
 Entorno: Windows, Python 3.14.6, discord.py 2.7.1, asyncpg 0.31.0,
 PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni Aiven.
@@ -8,7 +8,13 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
-- Suite completa con PostgreSQL tras separar recepción de participantes y espera: **176 pruebas aprobadas, ninguna omitida**.
+- Suite completa con PostgreSQL tras mostrar apodos y silenciar puertas inactivas: **188 pruebas aprobadas, ninguna omitida**.
+- Borrado posterior del ranking: **15 pruebas de ranking, cooldown y componentes aprobadas**;
+  programación de borrado a los 60 segundos comprobada también con rankings vacíos ES/BR.
+- Reset individual/completo: **44 pruebas de comandos, permisos y PostgreSQL aprobadas**,
+  incluidas 13 verificaciones nuevas. `user` y `all` son opciones del selector opcional;
+  el reset completo incluye usuarios fuera del top 15, respeta idioma/servidor y registra auditoría.
+  Si falla la auditoría, la transacción conserva los saldos.
 - Cambio posterior de unidades a `<:doce:1556451862969065512>`: **51 pruebas de componentes,
   flujo y recompensas aprobadas**; ranking ES/BR comprobado por separado con el emoji exacto.
 - Activación y botón de puerta vencida: **28 pruebas de componentes y ciclo de vida aprobadas**.
@@ -47,7 +53,7 @@ La suite comprobó:
   inicia la fase de espera inmediatamente. Con uno al vencer el plazo, también se resuelve.
   Usuarios no registrados no prolongan el tiempo. Carrera entre vencimiento y clics sin premios duplicados.
 - Puerta vencida: aviso ES/BR, botón rojo desactivado con etiqueta «Que pena» y borrado a los 10 segundos.
-  Clics enviados antes de la edición que llegan tarde siguen rechazándose en privado.
+  Clics enviados antes de la edición que llegan tarde se rechazan silenciosamente.
 - Imagen Vencida.png integrada para puertas vencidas, con variables ES_DOOR_TIMEOUT y BR_DOOR_TIMEOUT;
   ausentes o vacías usan el valor predeterminado y las sustituciones son independientes por idioma.
 - Resultado ganar/perder ES/BR: borrado a los 20 segundos, conservando saldos confirmados.
@@ -79,6 +85,12 @@ La suite comprobó:
 - Constraints de máximo dos slots, unicidad y saldos no negativos.
 - Rollback completo si falla la escritura del premio.
 - Rankings ES/BR independientes, top 15 y desempate estable.
+- Los mensajes de ranking ES/BR programan su borrado a los 60 segundos después del envío.
+- Ranking con apodo del servidor o nombre visible, sin menciones; consulta de miembros
+  que no están en caché, nombre de cuentas que dejaron el servidor y respaldo localizado
+  para cuentas no disponibles. Los nombres no insertan menciones, Markdown ni líneas adicionales.
+- Puertas cerradas/vencidas y clics repetidos no envían mensajes privados; las recompensas
+  permanecen en el mismo embed. Errores de clic quedan en logs, sin respuestas efímeras.
 - Auditoría de cambios manuales.
 - Creación automática concurrente sin duplicar puerta.
 - Reprogramación con el intervalo actual; activación idempotente.

@@ -69,9 +69,7 @@ async def test_button_flow_reveals_only_in_original_public_embed(
     for accepted in interactions[:2]:
         accepted.response.defer.assert_awaited_once_with()
         accepted.followup.send.assert_not_awaited()
-    interactions[2].followup.send.assert_awaited_once_with(
-        TEXTS[language].unavailable, ephemeral=True
-    )
+    interactions[2].followup.send.assert_not_awaited()
     assert started == [f"collect:{drop.id}", f"resolve:{drop.id}"]
     assert [row["user_id"] for row in await repo.winners(drop.id)] == [11, 12]
     processing = await repo.drop(drop.id)

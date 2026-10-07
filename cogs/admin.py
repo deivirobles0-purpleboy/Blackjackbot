@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 import discord
 from discord import app_commands
@@ -92,14 +93,46 @@ class Admin(commands.Cog):
         )
 
     @app_commands.command(
-        name="resetar_doces", description="Zera os doces de um usuário no idioma escolhido"
+        name="resetar_doces", description="Zera os doces de um usuário ou todo o ranking do idioma"
+    )
+    @app_commands.describe(
+        idioma="Idioma do ranking a resetar",
+        opcao="user: um usuário específico; all: todo o ranking do idioma",
+        user="Usuário a resetar quando a opção for user",
     )
     @app_commands.guild_only()
     @staff_only()
     async def reset(
-        self, interaction: discord.Interaction, user: discord.Member, idioma: Language
+        self,
+        interaction: discord.Interaction,
+        idioma: Language,
+        opcao: Literal["user", "all"] = "user",
+        user: discord.Member | None = None,
     ) -> None:
-        await self._adjust(interaction, user, idioma, "reset", 0, ephemeral=True)
+        if opcao == "user":
+            if user is None:
+                raise ValueError("Selecione um usuário para a opção user.")
+            await self._adjust(interaction, user, idioma, "reset", 0, ephemeral=True)
+            return
+        if opcao != "all":
+            raise ValueError("Selecione a opção user ou all.")
+        if user is not None:
+            raise ValueError("Use a opção all sem selecionar um usuário.")
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        count = await self.bot.repo.reset_ranking(interaction.guild_id, idioma, interaction.user.id)
+        log.info(
+            "Ranking reseteado guild=%s admin=%s language=%s users=%s",
+            interaction.guild_id,
+            interaction.user.id,
+            idioma,
+            count,
+        )
+        message = (
+            f"Ranking ES reseteado: {count} usuarios con saldo puestos a cero."
+            if idioma == Language.ES
+            else f"Ranking BR zerado: {count} usuários com saldo tiveram os doces zerados."
+        )
+        await interaction.followup.send(message, ephemeral=True)
 
     @app_commands.command(
         name="adicionar_doces", description="Adiciona doces ao usuário e registra a alteração"

@@ -44,11 +44,24 @@ def door_embed(
     return embed
 
 
-def ranking_embed(language: Language, rows: Sequence[Mapping]) -> discord.Embed:
+def ranking_embed(
+    language: Language,
+    rows: Sequence[Mapping],
+    *,
+    display_names: Mapping[int, str] | None = None,
+) -> discord.Embed:
     text = TEXTS[language]
+    names = display_names or {}
+    unknown = "Usuario desconocido" if language == Language.ES else "Usuário desconhecido"
+
+    def label(user_id: int) -> str:
+        name = names.get(user_id) or unknown
+        name = " ".join(name.splitlines())
+        return discord.utils.escape_markdown(name).replace("@", "@\u200b")
+
     description = (
         "\n".join(
-            f"**{index}.** <@{row['user_id']}> — **{row['candies']} {text.candy}**"
+            f"**{index}.** {label(row['user_id'])} — **{row['candies']} {text.candy}**"
             for index, row in enumerate(rows[:15], start=1)
         )
         or text.empty_ranking

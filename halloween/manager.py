@@ -391,7 +391,6 @@ class DoorManager:
                         )
                 return
             elif result.status == ClaimStatus.EXPIRED:
-                message = text.expired
                 self.start_job(str(drop_id), self.run_drop(drop_id))
             elif result.status == ClaimStatus.UNREGISTERED:
                 log.info(
@@ -405,8 +404,5 @@ class DoorManager:
                     ephemeral=True,
                 )
                 return
-            elif result.status == ClaimStatus.DUPLICATE:
-                message = text.duplicate
             else:
-                message = text.unavailable
-        await interaction.followup.send(message, ephemeral=True)
+                log.debug("Clic ignorado drop=%s status=%s", drop_id, result.status)

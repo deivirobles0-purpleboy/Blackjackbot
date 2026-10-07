@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import logging
 import re
 from uuid import UUID
 
 import discord
 
 from halloween.models import Language
-from utils.errors import SafeView, respond_error
+from utils.errors import SafeView
+
+log = logging.getLogger(__name__)
 
 
 def door_custom_id(language: Language, drop_id: UUID) -> str:
@@ -37,8 +40,9 @@ class DoorButton(
     async def callback(self, interaction: discord.Interaction) -> None:
         try:
             await interaction.client.manager.claim(interaction, self.drop_id, self.language)
-        except Exception as error:
-            await respond_error(interaction, error)
+        except Exception:
+            # Door clicks are acknowledged by the manager; report failures only in logs.
+            log.exception("Error procesando clic de puerta drop=%s", self.drop_id)
 
 
 class DoorView(SafeView):

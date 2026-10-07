@@ -191,7 +191,7 @@ async def test_expired_notice_and_ten_second_cleanup_recover_after_restart(
     )
     # A click sent before the edit can still arrive; the database rejects it.
     await DoorView(language, drop.id).children[0].callback(interaction)
-    interaction.followup.send.assert_awaited_once_with(TEXTS[language].expired, ephemeral=True)
+    interaction.followup.send.assert_not_awaited()
     assert await repo.winners(drop.id) == []
     await repo.pool.execute(
         "UPDATE door_drops SET delete_at=now()-interval '1 second' WHERE id=$1", drop.id
