@@ -61,9 +61,16 @@ async def test_load_all_cogs_and_slash_choices_offline():
             assert command.guild_only
             if command.name not in {"doces", "dulces"}:
                 assert command.checks
+            if command.name == "reset_doces":
+                options = command.to_dict(bot.tree)["options"]
+                assert len(options) == 1
+                assert options[0]["name"] == "idioma"
+                assert options[0]["required"]
+                assert {choice["value"] for choice in options[0]["choices"]} == {"ES", "BR", "all"}
             for parameter in command.parameters:
                 if parameter.name == "idioma":
-                    assert {choice.value for choice in parameter.choices} == {"ES", "BR"}
+                    choices = {"ES", "BR", "all"} if command.name == "reset_doces" else {"ES", "BR"}
+                    assert {choice.value for choice in parameter.choices} == choices
         assert bot.intents.guilds
         assert not bot.intents.message_content
         assert not bot.intents.members

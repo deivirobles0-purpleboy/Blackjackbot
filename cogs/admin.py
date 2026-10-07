@@ -1,24 +1,14 @@
-import asyncio
 import logging
-import re
+from typing import Literal
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from halloween.models import Language
-from utils.permissions import is_staff_member, staff_only
+from utils.permissions import staff_only
 
 log = logging.getLogger(__name__)
-
-
-def reset_user_id(value: str) -> int | None:
-    match = re.fullmatch(r"(?:<@!?([0-9]{1,19})>|([0-9]{1,19}))", value.strip())
-    if match:
-        user_id = int(match[1] or match[2])
-        if 0 < user_id <= 9_223_372_036_854_775_807:
-            return user_id
-    return None
 
 
 class Admin(commands.Cog):
@@ -103,95 +93,38 @@ class Admin(commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @app_commands.command(
-        name="reset_doces", description="Zera os doces de um usuário ou todo o ranking do idioma"
-    )
+    @app_commands.command(name="reset_doces", description="Zera todo o ranking ES, BR ou ambos")
     @app_commands.describe(
-        idioma="Idioma do ranking a resetar",
-        destino="Selecione um usuário ou all para zerar todo o ranking do idioma",
+        idioma="ES, BR ou all para zerar ambos os rankings",
     )
     @app_commands.guild_only()
     @staff_only()
     async def reset(
         self,
         interaction: discord.Interaction,
-        idioma: Language,
-        destino: str,
+        idioma: Literal["ES", "BR", "all"],
     ) -> None:
-        target = destino.strip()
-        user_id = reset_user_id(target)
-        if target.casefold() != "all" and user_id is None:
-            raise ValueError("Selecione um usuário na lista, informe uma menção/ID ou escolha all.")
+        if idioma not in {"ES", "BR", "all"}:
+            raise ValueError("Selecione ES, BR ou all.")
+        language = None if idioma == "all" else Language(idioma)
         await interaction.response.defer(ephemeral=True, thinking=True)
-        if user_id is not None:
-            member = interaction.guild.get_member(user_id)
-            if member is None:
-                member = await interaction.guild.fetch_member(user_id)
-            await self._adjust(interaction, member, idioma, "reset", 0, ephemeral=True)
-            return
-        count = await self.bot.repo.reset_ranking(interaction.guild_id, idioma, interaction.user.id)
+        count = await self.bot.repo.reset_ranking(
+            interaction.guild_id, language, interaction.user.id
+        )
         log.info(
-            "Ranking reseteado guild=%s admin=%s language=%s users=%s",
+            "Ranking reseteado guild=%s admin=%s language=%s records=%s",
             interaction.guild_id,
             interaction.user.id,
             idioma,
             count,
         )
-        message = (
-            f"Ranking ES reseteado: {count} usuarios con saldo puestos a cero."
-            if idioma == Language.ES
-            else f"Ranking BR zerado: {count} usuários com saldo tiveram os doces zerados."
-        )
+        if idioma == "all":
+            message = "Rankings ES/BR deste servidor zerados."
+        elif idioma == "ES":
+            message = f"Ranking ES reseteado: {count} usuarios con saldo puestos a cero."
+        else:
+            message = f"Ranking BR zerado: {count} usuários com saldo tiveram os doces zerados."
         await interaction.followup.send(message, ephemeral=True)
-
-    @reset.autocomplete("destino")
-    async def reset_destinations(
-        self, interaction: discord.Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
-        # Autocomplete doesn't run the command's Staff check automatically.
-        if interaction.guild is None or not is_staff_member(interaction.user):
-            return []
-        query = current.strip()
-        choices = []
-        if not query or "all".startswith(query.casefold()):
-            choices.append(app_commands.Choice(name="all — Todo o ranking", value="all"))
-        members = {}
-        for member in interaction.guild.members:
-            if not query or query.casefold() in member.display_name.casefold():
-                members[member.id] = member.display_name
-        user_id = reset_user_id(query)
-        try:
-            if user_id is not None:
-                member = await asyncio.wait_for(
-                    interaction.guild.fetch_member(user_id), timeout=1.5
-                )
-                members[member.id] = member.display_name
-            elif query and query.casefold() != "all":
-                # Official Search Guild Members endpoint, using discord.py's rate limiting.
-                rows = await asyncio.wait_for(
-                    self.bot.http.request(
-                        discord.http.Route(
-                            "GET",
-                            "/guilds/{guild_id}/members/search",
-                            guild_id=interaction.guild_id,
-                        ),
-                        params={"query": query, "limit": 24},
-                    ),
-                    timeout=1.5,
-                )
-                for row in rows:
-                    user = row["user"]
-                    members[int(user["id"])] = (
-                        row.get("nick") or user.get("global_name") or user["username"]
-                    )
-        except (discord.HTTPException, OSError, TimeoutError):
-            log.debug("No se pudo completar búsqueda de usuarios guild=%s", interaction.guild_id)
-        for member_id, name in members.items():
-            if len(choices) >= 25:
-                break
-            label = f"{name} — {member_id}"
-            choices.append(app_commands.Choice(name=label[:100], value=str(member_id)))
-        return choices
 
     @app_commands.command(
         name="adicionar_doces", description="Adiciona doces ao usuário e registra a alteração"

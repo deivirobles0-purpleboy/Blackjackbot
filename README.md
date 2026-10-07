@@ -198,7 +198,7 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 | `/config_doces` | Panel Staff con Español/Português | Privada |
 | `/ativar_doces` | Activar idiomas con Canal y CD completos | Pública |
 | `/desativar_doces` | Desactivar ambos y cancelar apariciones pendientes | Pública |
-| `/reset_doces idioma destino` | Poner saldo de un usuario o todo el ranking a cero | Privada |
+| `/reset_doces idioma` | Poner a cero todo el ranking ES, BR o ambos con `all` | Privada |
 | `/adicionar_doces user quantidade idioma` | Agregar cantidad positiva | Pública |
 | `/tirar_doces user quantidade idioma` | Restar sin bajar de cero | Pública |
 | `/porta_de_teste canal idioma recompensa_real` | Puerta de prueba aislada | Solo puerta pública; sin confirmación privada ni enlace al mensaje |
@@ -206,10 +206,10 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 Los cambios manuales, activaciones y ajustes quedan registrados en `admin_logs`,
 incluido el ID del responsable. Las cantidades se modifican atómicamente.
 
-`/reset_doces` tiene dos campos: `idioma` y `destino`. En `destino`, empieza a escribir el
-nombre y selecciona al usuario de la lista, pega su mención/ID, o elige `all` para
-poner todo el ranking a cero. El reset completo afecta únicamente al idioma y servidor seleccionados.
-Ejemplos: `/reset_doces idioma:BR destino:all` y `/reset_doces idioma:ES destino:@Usuario`.
+`/reset_doces` tiene un único campo obligatorio, `idioma`, con las opciones `ES`, `BR`
+y `all`. ES o BR ponen a cero todo el ranking del idioma elegido; `all` pone a cero
+ambos rankings en una sola transacción. Siempre afecta únicamente al servidor del comando.
+Ejemplos: `/reset_doces idioma:BR` y `/reset_doces idioma:all`.
 
 Rankings: orden descendente por dulces; los empates se ordenan por User ID ascendente.
 Los mensajes de `/doces` y `/dulces` se eliminan automáticamente 60 segundos después

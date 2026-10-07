@@ -529,11 +529,11 @@ class Repository:
             await self._audit(con, guild_id, admin_id, language, action, user_id, amount)
             return total
 
-    async def reset_ranking(self, guild_id: int, language: Language, admin_id: int) -> int:
+    async def reset_ranking(self, guild_id: int, language: Language | None, admin_id: int) -> int:
         async with self.pool.acquire() as con, con.transaction():
             result = await con.execute(
                 "UPDATE user_candies SET candies=0,updated_at=now() "
-                "WHERE guild_id=$1 AND language=$2 AND candies>0",
+                "WHERE guild_id=$1 AND ($2::text IS NULL OR language=$2) AND candies>0",
                 guild_id,
                 language,
             )
@@ -546,7 +546,7 @@ class Repository:
         con: asyncpg.Connection,
         guild_id: int,
         admin_id: int,
-        language: Language,
+        language: Language | None,
         action: str,
         target_id: int | None = None,
         amount: int | None = None,
