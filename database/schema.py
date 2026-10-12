@@ -68,6 +68,15 @@ CREATE TABLE IF NOT EXISTS door_winners (
 -- Idempotent upgrade: preserve scores, settings and existing winning doors.
 ALTER TABLE event_config ADD COLUMN IF NOT EXISTS win_percent SMALLINT NOT NULL
     DEFAULT 100 CHECK (win_percent BETWEEN 0 AND 100);
+ALTER TABLE event_config ADD COLUMN IF NOT EXISTS daily_start TIME;
+ALTER TABLE event_config ADD COLUMN IF NOT EXISTS daily_end TIME;
+ALTER TABLE event_config DROP CONSTRAINT IF EXISTS event_config_daily_window_check;
+ALTER TABLE event_config ADD CONSTRAINT event_config_daily_window_check CHECK (
+    (daily_start IS NULL AND daily_end IS NULL) OR
+    (daily_start IS NOT NULL AND daily_end IS NOT NULL AND daily_start <> daily_end
+     AND daily_start < TIME '24:00' AND daily_end < TIME '24:00'
+     AND extract(second FROM daily_start)=0 AND extract(second FROM daily_end)=0)
+);
 ALTER TABLE door_drops ADD COLUMN IF NOT EXISTS candy_win BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE door_winners DROP CONSTRAINT IF EXISTS door_winners_candies_check;
 ALTER TABLE door_winners ADD CONSTRAINT door_winners_candies_check

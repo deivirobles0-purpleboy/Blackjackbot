@@ -139,7 +139,6 @@ class DoorManager:
             except discord.NotFound:
                 pass  # Already deleted; complete cleanup idempotently.
             await self.repo.mark_deleted(drop.id)
-            log.info("Mensaje de puerta eliminado drop=%s message=%s", drop.id, drop.message_id)
 
     async def _channel(self, drop: DoorDrop) -> discord.TextChannel:
         channel = self.bot.get_channel(drop.channel_id)
@@ -234,14 +233,6 @@ class DoorManager:
                         connection,
                         published_at=getattr(message, "created_at", None),
                     )
-                log.info(
-                    "Puerta publicada id=%s language=%s channel=%s message=%s test=%s",
-                    drop.id,
-                    drop.language,
-                    drop.channel_id,
-                    message.id,
-                    drop.is_test,
-                )
                 self.schedule_expiration(await self.repo.drop(drop.id))
                 return
             if drop.message_id is None:
@@ -262,21 +253,11 @@ class DoorManager:
                     )
                     current = await self.repo.mark_expired_displayed(drop.id)
                     self.schedule_deletion(current)
-                    log.info("Puerta vencida sin participantes drop=%s", drop.id)
                     return
-                participants = await self.repo.winners(drop.id)
                 await message.edit(
                     embed=door_embed(drop, "waiting", self.settings),
                     view=DoorView(drop.language, drop.id, disabled=True),
                     allowed_mentions=discord.AllowedMentions.none(),
-                )
-                log.info(
-                    "Puerta en espera drop=%s participantes=%s/%s cierre=%s",
-                    drop.id,
-                    len(participants),
-                    MAX_WINNERS,
-                    (drop.processing_at or datetime.now(timezone.utc))
-                    + timedelta(seconds=RESULT_REVEAL_SECONDS),
                 )
             except discord.NotFound:
                 if drop.status == DropStatus.EXPIRED:
@@ -323,7 +304,6 @@ class DoorManager:
             # Start the deletion countdown only after Discord accepts the final result.
             await self.repo.finish(drop.id, delete_after=RESULT_DELETE_SECONDS)
             self.schedule_deletion(await self.repo.drop(drop.id))
-            log.info("Puerta finalizada id=%s ganadores=%s", drop.id, [dict(w) for w in winners])
 
     async def due(self, guild_id: int, language: Language) -> None:
         self.require_leader()
@@ -368,13 +348,6 @@ class DoorManager:
                 language=language,
             )
             if result.status == ClaimStatus.ACCEPTED:
-                log.info(
-                    "Claim confirmado drop=%s user=%s reward=%s slot=%s",
-                    drop_id,
-                    member.id,
-                    result.candies,
-                    result.count,
-                )
                 if result.count < MAX_WINNERS:
                     self.schedule_collection(await self.repo.drop(drop_id))
                 if result.count == MAX_WINNERS:
@@ -393,16 +366,8 @@ class DoorManager:
             elif result.status == ClaimStatus.EXPIRED:
                 self.start_job(str(drop_id), self.run_drop(drop_id))
             elif result.status == ClaimStatus.UNREGISTERED:
-                log.info(
-                    "Claim sin registro rechazado guild=%s user=%s drop=%s",
-                    member.guild.id,
-                    member.id,
-                    drop_id,
-                )
                 await interaction.followup.send(
                     embed=discord.Embed(description=text.not_registered, color=0xF28C28),
                     ephemeral=True,
                 )
                 return
-            else:
-                log.debug("Clic ignorado drop=%s status=%s", drop_id, result.status)

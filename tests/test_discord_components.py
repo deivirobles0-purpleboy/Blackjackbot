@@ -22,14 +22,14 @@ from halloween.registration import RegistrationView
 from halloween.views import DoorView, door_custom_id
 
 
-def settings():
+def settings(extension="gif"):
     return Settings(
         token="test",
         database_url="postgresql://test@localhost/test?sslmode=require",
         images={
             language: DoorImages(
                 **{
-                    phase: f"https://example.com/{language.value}/{phase}.gif"
+                    phase: f"https://example.com/{language.value}/{phase}.{extension}"
                     for phase in ("closed", "waiting", "candy_win", "candy_lose", "timeout")
                 }
             )
@@ -61,6 +61,10 @@ async def test_load_all_cogs_and_slash_choices_offline():
             assert command.guild_only
             if command.name not in {"doces", "dulces"}:
                 assert command.checks
+            if command.name == "ativar_doces":
+                options = command.to_dict(bot.tree)["options"]
+                assert [option["name"] for option in options] == ["inicio", "fim"]
+                assert all(option["required"] for option in options)
             if command.name == "reset_doces":
                 options = command.to_dict(bot.tree)["options"]
                 assert len(options) == 1
@@ -105,7 +109,8 @@ async def test_persistent_views_ids_and_channel_select():
         assert len(modal.children) == 2
 
 
-def test_gifs_language_phase_and_exact_embeds():
+@pytest.mark.parametrize("extension", ["gif", "webp"])
+def test_images_language_phase_and_exact_embeds(extension):
     for language in Language:
         drop = DoorDrop(
             uuid4(),
@@ -121,9 +126,11 @@ def test_gifs_language_phase_and_exact_embeds():
             None,
         )
         for phase in ("closed", "waiting", "result", "expired"):
-            embed = door_embed(drop, phase, settings(), [{"user_id": 123, "candies": 4}])
+            embed = door_embed(drop, phase, settings(extension), [{"user_id": 123, "candies": 4}])
             image_phase = {"result": "candy_win", "expired": "timeout"}.get(phase, phase)
-            assert embed.image.url == f"https://example.com/{language.value}/{image_phase}.gif"
+            assert (
+                embed.image.url == f"https://example.com/{language.value}/{image_phase}.{extension}"
+            )
             if phase == "result":
                 assert "<@123>: 4" in embed.description
 

@@ -19,16 +19,16 @@ class DoorImages:
     timeout: str = ""
 
 
-DEFAULT_DOOR_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif"
-DEFAULT_CANDY_WIN_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesGIF.gif"
-DEFAULT_CANDY_LOSE_GIF_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaGIF.gif"
+DEFAULT_DOOR_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaWEBP.webp"
+DEFAULT_CANDY_WIN_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesWEBP.webp"
+DEFAULT_CANDY_LOSE_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaWEBP.webp"
 DEFAULT_DOOR_TIMEOUT_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png"
 DEFAULT_DOOR_IMAGES = {
     language: DoorImages(
-        closed=DEFAULT_DOOR_GIF_URL,
-        waiting=DEFAULT_DOOR_GIF_URL,
-        candy_win=DEFAULT_CANDY_WIN_GIF_URL,
-        candy_lose=DEFAULT_CANDY_LOSE_GIF_URL,
+        closed=DEFAULT_DOOR_IMAGE_URL,
+        waiting=DEFAULT_DOOR_IMAGE_URL,
+        candy_win=DEFAULT_CANDY_WIN_IMAGE_URL,
+        candy_lose=DEFAULT_CANDY_LOSE_IMAGE_URL,
         timeout=DEFAULT_DOOR_TIMEOUT_URL,
     )
     for language in Language
@@ -71,6 +71,7 @@ class Settings:
         for language in Language:
             values = {}
             for phase in ("closed", "waiting", "candy_win", "candy_lose", "timeout"):
+                # Preserve existing environment names; image URLs may use WebP, GIF or PNG.
                 suffix = "TIMEOUT" if phase == "timeout" else f"{phase.upper()}_GIF"
                 name = f"{language.value}_DOOR_{suffix}"
                 value = os.getenv(name, "").strip()

@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -25,7 +26,8 @@ def command_context():
 
 @pytest.mark.parametrize("language", list(Language))
 @pytest.mark.parametrize("real_rewards", [False, True])
-async def test_test_door_leaves_only_public_door(language, real_rewards):
+async def test_test_door_leaves_only_public_door(caplog, language, real_rewards):
+    caplog.set_level(logging.DEBUG)
     cog, interaction, channel = command_context()
 
     async def publish(*args):
@@ -39,6 +41,7 @@ async def test_test_door_leaves_only_public_door(language, real_rewards):
     interaction.response.defer.assert_awaited_once_with(ephemeral=True, thinking=True)
     interaction.delete_original_response.assert_awaited_once_with()
     interaction.followup.send.assert_not_awaited()
+    assert not any(record.name == "cogs.admin" for record in caplog.records)
 
 
 async def test_publication_failure_remains_available_to_error_handler():

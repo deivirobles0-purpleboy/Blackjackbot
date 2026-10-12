@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -75,8 +76,9 @@ def manager(repo, channel, *, schedule_timers=False):
 @pytest.mark.parametrize("language", list(Language))
 @pytest.mark.parametrize("candy_win", [True, False])
 async def test_three_phases_same_message_and_processing_recovery(
-    repo, monkeypatch, language, candy_win
+    repo, monkeypatch, caplog, language, candy_win
 ):
+    caplog.set_level(logging.DEBUG)
     await ready(repo, language)
     await repo.set_probabilities(
         GUILD, language, 100 if candy_win else 0, 0 if candy_win else 100, STAFF
@@ -129,6 +131,9 @@ async def test_three_phases_same_message_and_processing_recovery(
     assert message.deletes == 1
     assert (await repo.drop(drop.id)).deleted_at is not None
     assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
+    assert not any(
+        record.name in {"halloween.manager", "database.repositories"} for record in caplog.records
+    )
 
 
 async def test_recover_send_before_message_id_commit_without_duplicate(repo):

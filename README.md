@@ -19,7 +19,7 @@ pruebas están separadas en `requirements-dev.txt`.
 
 ```text
 bot.py                 Inicio, intents, Cogs, Views y apagado
-config/                Entorno, IDs y GIFs por idioma
+config/                Entorno, IDs e imágenes por idioma
 database/              Pool asyncpg, esquema y consultas transaccionales
 cogs/                  Comandos Slash y panel Staff
 halloween/             Puertas, scheduler, componentes, registro y textos
@@ -102,15 +102,21 @@ y [Views persistentes del proyecto discord.py](https://github.com/Rapptz/discord
 Las imágenes ya tienen valores predeterminados incluidos en `config/settings.py`
 para ambos idiomas:
 
-- Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Puerta%201.gif`.
-- Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesGIF.gif`.
-- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaGIF.gif`.
+- Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaWEBP.webp`.
+- Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesWEBP.webp`.
+- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaWEBP.webp`.
 - Puerta vencida ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png`.
 
 No necesitas configurar las diez variables para mostrar imágenes. Si una variable
 está ausente o vacía, se utiliza el valor predeterminado; una URL HTTPS en esa
 variable sustituye únicamente la fase e idioma correspondientes. Reinicia el bot
 después de cambiar las variables.
+
+Las animaciones predeterminadas usan WebP y la puerta vencida conserva PNG.
+Los identificadores terminados en `_GIF` se mantienen por compatibilidad y aceptan
+también enlaces WebP. El bot pasa la URL a `embed.set_image` sin convertir el archivo.
+Si Square tiene variables con los enlaces GIF anteriores, actualízalas a los nuevos
+WebP o déjalas vacías para utilizar los valores predeterminados.
 
 Compatibilidad: `ES_DOOR_RESULT_GIF` y `BR_DOOR_RESULT_GIF` siguen aceptándose como
 respaldo para ganar cuando el nuevo nombre está ausente o vacío. El nuevo nombre
@@ -196,8 +202,8 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 | `/doces` | Top BR de hasta 15 usuarios | Pública |
 | `/dulces` | Top ES de hasta 15 usuarios | Pública |
 | `/config_doces` | Panel Staff con Español/Português | Privada |
-| `/ativar_doces` | Activar idiomas con Canal y CD completos | Pública |
-| `/desativar_doces` | Desactivar ambos y cancelar apariciones pendientes | Pública |
+| `/ativar_doces inicio fim` | Programar una franja diaria ES/BR con Canal y CD completos | Pública |
+| `/desativar_doces` | Desactivar ambos, eliminar la franja diaria y cancelar apariciones pendientes | Pública |
 | `/reset_doces idioma` | Poner a cero todo el ranking ES, BR o ambos con `all` | Privada |
 | `/adicionar_doces user quantidade idioma` | Agregar cantidad positiva | Pública |
 | `/tirar_doces user quantidade idioma` | Restar sin bajar de cero | Pública |
@@ -205,6 +211,30 @@ No se conceden excepciones por tener Administrator o un rol Staff diferente.
 
 Los cambios manuales, activaciones y ajustes quedan registrados en `admin_logs`,
 incluido el ID del responsable. Las cantidades se modifican atómicamente.
+
+`/ativar_doces inicio:09:00 fim:22:00` programa drops automáticos todos los días desde
+las 09:00 hasta antes de las 22:00, en `America/Sao_Paulo`. Ambos campos son
+obligatorios y usan HH:MM en formato de 24 horas. Se rechazan horas inválidas o iguales.
+La franja se aplica a ES/BR con Canal y CD configurados y queda guardada en PostgreSQL;
+no hay que repetir el comando al día siguiente ni después de reiniciar el bot.
+
+Admite cruzar medianoche: `/ativar_doces inicio:22:00 fim:03:00` permite drops desde
+las 22:00 hasta antes de las 03:00 del día siguiente. Dentro de la franja se mantiene
+el CD aleatorio de `/config_doces`: al activar antes de la apertura, el primer timer
+parte de esa apertura más el CD. Si un CD cruza el cierre, se traslada a la siguiente
+apertura. Los timers no generan una ráfaga de apariciones atrasadas.
+
+Preparación y publicación comprueban la hora de São Paulo usando el reloj y la base
+de zonas horarias de PostgreSQL, independientemente de la zona horaria de Square.
+El scheduler sigue comprobando timers cada 5 segundos. Fuera de la franja no se
+publican nuevas puertas automáticas; las ya publicadas terminan y se borran normalmente.
+Las puertas manuales de prueba siguen disponibles para Staff y no cambian la franja.
+El panel de estado muestra la programación diaria; no se añaden logs rutinarios de drops.
+
+`/desativar_doces` elimina la programación diaria y desactiva completamente los drops
+automáticos ES/BR hasta ejecutar de nuevo `/ativar_doces`. La migración conserva las
+configuraciones anteriores sin horario, que continúan operando como antes hasta que
+se reconfiguren mediante el comando.
 
 `/reset_doces` tiene un único campo obligatorio, `idioma`, con las opciones `ES`, `BR`
 y `all`. ES o BR ponen a cero todo el ranking del idioma elegido; `all` pone a cero
@@ -238,7 +268,8 @@ saldos y los timers del evento sí permanecen en PostgreSQL.
 6. **Estado** consulta PostgreSQL y muestra estado activo, canal, CD mínimo/máximo,
    próxima aparición y minutos reales desde la última puerta. No altera ajustes.
    También muestra las probabilidades guardadas.
-7. Ejecuta `/ativar_doces`. Solo se activan idiomas completos; se informa cuáles faltan.
+7. Ejecuta `/ativar_doces inicio:09:00 fim:22:00` con la franja deseada.
+   Solo se programan idiomas completos; se informa cuáles faltan.
    La respuesta muestra `SISTEMA DE DOCES ATIVADO:` y las filas BR/ES con
    `<:check:1532500942237339728>` para los idiomas activados.
 
@@ -271,9 +302,9 @@ en su canal original.
 4. La puerta recibe hasta dos participantes durante 6 segundos desde su publicación.
    El primer clic mantiene la puerta abierta. Al entrar el segundo, o al terminar
    los 6 segundos con un participante, se edita **el mismo mensaje** a «Esperando recompensas»
-   con su GIF y el botón Abrir rojo desactivado. Sin participantes, la puerta vence.
+   con su imagen y el botón Abrir rojo desactivado. Sin participantes, la puerta vence.
 5. A los 5 segundos desde iniciar la fase de espera, se vuelve a editar **ese mismo Message ID** para mostrar
-   participantes y el GIF de ganar o perder, eliminando el botón. El embed de derrota
+   participantes y la animación de ganar o perder, eliminando el botón. El embed de derrota
    muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
    conservan el footer del top correspondiente al idioma. El resultado se publica
    con uno o dos participantes; no espera indefinidamente al segundo. Se programa
@@ -281,7 +312,7 @@ en su canal original.
 
 El clic aceptado se confirma silenciosamente: no se envía un resultado ni una
 confirmación de recompensa efímera. Puerta cerrada, espera y resultado se muestran
-editando el mismo embed público con su GIF correspondiente. Clics duplicados o de
+editando el mismo embed público con su imagen correspondiente. Clics duplicados o de
 puertas cerradas/vencidas se reconocen silenciosamente, sin mensajes privados.
 El aviso de falta de registro continúa siendo privado y no consume cupo.
 
@@ -354,7 +385,7 @@ el timer ni la fecha de última puerta del sistema automático.
 
 Con `LOG_LEVEL=INFO`, el arranque muestra pasos breves con ✅, sin repetir la fecha,
 el nivel y el nombre de cada módulo; Square Cloud ya añade su propia fecha/hora.
-Se informa de PostgreSQL y esquema, botones persistentes, módulos, comandos, GIFs,
+Se informa de PostgreSQL y esquema, botones persistentes, módulos, comandos, imágenes,
 Discord, servidores y scheduler. Después se muestran Canal, CD, estado y próxima
 aparición ES/BR, junto con la comprobación del permiso y jerarquía del rol Halloween.
 
@@ -364,6 +395,11 @@ Describe esos controles de inicio, no garantiza que todas las operaciones futura
 estén libres de errores. Si hay cero servidores, faltan Canal/CD o permisos, el
 resumen indica `Blackjack Conectado - configuración pendiente` y explica qué falta.
 Un idioma configurado e inactivo se informa como Inactivo; no se activa por mostrar logs.
+
+Durante el evento se conservan los avisos de `/ativar_doces` y `/desativar_doces`.
+Los drops no emiten notificaciones de publicación, espera, participación, resultado,
+vencimiento, borrado ni próxima aparición. Esto también se aplica a las puertas de prueba.
+Los fallos y advertencias del motor continúan registrados para diagnosticar problemas.
 
 Se conservan advertencias, errores, tracebacks y la redacción de secretos. Se omiten
 los mensajes rutinarios de conexión internos de discord.py y las advertencias sobre
@@ -405,7 +441,7 @@ Se verifican recompensas, cooldown, roles, validaciones, Cogs y componentes,
 simultaneidad de 40 claims, duplicados, constraints, rollback, independencia ES/BR,
 timers, auditoría y recuperación de publicación/proceso sobre el mismo mensaje.
 Las pruebas del flujo Discord usan dobles de mensajes: para confirmar permisos,
-propagación de comandos y reproducción de GIFs hace falta una prueba final en tu
+propagación de comandos y reproducción de animaciones hace falta una prueba final en tu
 servidor con las variables reales de producción.
 
 Resultados del desarrollo y límites de la validación: [VALIDATION.md](VALIDATION.md).
@@ -440,7 +476,7 @@ y [despliegue de bots y variables](https://help.squarecloud.app/en-us/article/ho
    opción disponible en tu cuenta. Mantén la entrada `bot.py` y `requirements.txt`.
 3. Configura `DISCORD_TOKEN`, `DATABASE_URL` y la CA recomendada en las variables de
    la aplicación. No hace falta subir `.env` a producción.
-4. Los GIFs ya están incluidos para las ocho combinaciones; si deseas sustituirlos, configura las
+4. Las URLs de imágenes ya están incluidas para todas las fases; si deseas sustituirlas, configura las
    variables correspondientes y reinicia la aplicación para leerlas.
 5. Revisa logs de conexión PostgreSQL, Cogs, sincronización y scheduler.
 6. Publica el registro, configura ES/BR y prueba primero una puerta simulada.
@@ -449,7 +485,7 @@ y [despliegue de bots y variables](https://help.squarecloud.app/en-us/article/ho
 
 ## Recursos finales
 
-Los GIFs proporcionados ya están integrados como valores predeterminados. Para
+Los enlaces WebP y PNG proporcionados ya están integrados como valores predeterminados. Para
 utilizar imágenes diferentes en el futuro, puedes sustituirlas individualmente:
 
 ```dotenv

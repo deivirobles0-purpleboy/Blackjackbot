@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time
 from enum import StrEnum
 from typing import Any, Mapping
 from uuid import UUID
@@ -41,6 +41,8 @@ class EventConfig:
     last_drop_at: datetime | None
     updated_at: datetime
     win_percent: int = 100
+    daily_start: time | None = None
+    daily_end: time | None = None
 
     @property
     def lose_percent(self) -> int:

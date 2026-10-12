@@ -54,7 +54,10 @@ def test_settings_read_env_without_gifs(monkeypatch):
 
 @pytest.mark.parametrize("language", list(Language))
 @pytest.mark.parametrize("phase", ["closed", "waiting", "candy_win", "candy_lose", "timeout"])
-def test_gif_override_is_independent_and_empty_uses_default(monkeypatch, language, phase):
+@pytest.mark.parametrize("extension", ["gif", "webp"])
+def test_image_override_is_independent_and_empty_uses_default(
+    monkeypatch, language, phase, extension
+):
     monkeypatch.setattr("config.settings.load_dotenv", lambda *a, **kw: None)
     monkeypatch.setenv("DISCORD_TOKEN", "test-token")
     monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test?sslmode=require")
@@ -68,7 +71,9 @@ def test_gif_override_is_independent_and_empty_uses_default(monkeypatch, languag
             )
     suffix = "TIMEOUT" if phase == "timeout" else f"{phase.upper()}_GIF"
     name = f"{language}_DOOR_{suffix}"
-    override = f"https://example.com/{language}/{phase}.{'png' if phase == 'timeout' else 'gif'}"
+    override = (
+        f"https://example.com/{language}/{phase}.{'png' if phase == 'timeout' else extension}"
+    )
     monkeypatch.setenv(name, f"  {override}  ")
     images = Settings.from_env().images
     for current_language in Language:

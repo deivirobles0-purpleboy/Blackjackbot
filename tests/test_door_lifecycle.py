@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -154,8 +155,9 @@ async def test_expired_automatic_door_releases_timer_once(repo):
 @pytest.mark.postgres
 @pytest.mark.parametrize("language", list(Language))
 async def test_expired_notice_and_ten_second_cleanup_recover_after_restart(
-    repo, monkeypatch, language
+    repo, monkeypatch, caplog, language
 ):
+    caplog.set_level(logging.DEBUG)
     await ready(repo, language)
     channel = FakeChannel()
     mgr = manager(repo, channel)
@@ -202,6 +204,9 @@ async def test_expired_notice_and_ten_second_cleanup_recover_after_restart(
     assert message.deletes == 1
     assert (await repo.drop(drop.id)).deleted_at is not None
     assert await repo.pending_cleanup() == []
+    assert not any(
+        record.name in {"halloween.manager", "database.repositories"} for record in caplog.records
+    )
 
 
 @pytest.mark.postgres

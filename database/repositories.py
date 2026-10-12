@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import logging
 import random
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, time
 from uuid import UUID, uuid4
 
 import asyncpg
@@ -12,6 +11,12 @@ from config.constants import (
     DOOR_OPEN_SECONDS,
     EXPIRED_DELETE_SECONDS,
     MAX_WINNERS,
+)
+from halloween.daily_schedule import (
+    EVENT_TIMEZONE,
+    next_drop_time,
+    validate_daily_window,
+    window_is_open,
 )
 from halloween.models import (
     ClaimResult,
@@ -23,8 +28,6 @@ from halloween.models import (
     validate_probabilities,
 )
 from halloween.rewards import roll_candy_win, roll_loss, roll_reward
-
-log = logging.getLogger(__name__)
 
 
 class Repository:
@@ -111,7 +114,18 @@ class Repository:
             await self._audit(con, guild_id, admin_id, language, "probability_win", amount=win)
             await self._audit(con, guild_id, admin_id, language, "probability_lose", amount=lose)
 
-    async def set_enabled(self, guild_id: int, enabled: bool, admin_id: int) -> list[Language]:
+    async def set_enabled(
+        self,
+        guild_id: int,
+        enabled: bool,
+        admin_id: int,
+        *,
+        start: time | None = None,
+        end: time | None = None,
+    ) -> list[Language]:
+        validate_daily_window(start, end)
+        if not enabled:
+            start = end = None
         await self.ensure_config(guild_id)
         changed = []
         async with self.pool.acquire() as con, con.transaction():
@@ -125,11 +139,15 @@ class Repository:
                     continue
                 await con.execute(
                     "UPDATE event_config SET enabled=$3, "
-                    "next_drop_at=CASE WHEN NOT $3 THEN NULL ELSE next_drop_at END, "
+                    "next_drop_at=CASE WHEN NOT $3 OR daily_start IS DISTINCT FROM $4::time "
+                    "OR daily_end IS DISTINCT FROM $5::time THEN NULL ELSE next_drop_at END, "
+                    "daily_start=$4,daily_end=$5, "
                     "updated_at=now() WHERE guild_id=$1 AND language=$2",
                     guild_id,
                     cfg.language,
                     enabled,
+                    start,
+                    end,
                 )
                 if enabled:
                     await self._schedule_if_idle(con, guild_id, cfg.language)
@@ -144,7 +162,34 @@ class Repository:
                 await self._audit(
                     con, guild_id, admin_id, cfg.language, "enable" if enabled else "disable"
                 )
+                if enabled and start is not None:
+                    await self._audit(
+                        con,
+                        guild_id,
+                        admin_id,
+                        cfg.language,
+                        "daily_start",
+                        amount=start.hour * 60 + start.minute,
+                    )
+                    await self._audit(
+                        con,
+                        guild_id,
+                        admin_id,
+                        cfg.language,
+                        "daily_end",
+                        amount=end.hour * 60 + end.minute,
+                    )
         return changed
+
+    @staticmethod
+    async def _local_now(con: asyncpg.Connection) -> datetime:
+        # PostgreSQL supplies both the clock and IANA timezone data on every host.
+        return await con.fetchval("SELECT clock_timestamp() AT TIME ZONE $1", EVENT_TIMEZONE)
+
+    async def _window_open(self, con: asyncpg.Connection, cfg: EventConfig) -> bool:
+        if cfg.daily_start is None:
+            return True
+        return window_is_open(await self._local_now(con), cfg.daily_start, cfg.daily_end)
 
     async def _schedule_if_idle(
         self, con: asyncpg.Connection, guild_id: int, language: Language
@@ -165,19 +210,16 @@ class Repository:
         )
         if not live:
             delay = random.randint(cfg.min_minutes, cfg.max_minutes)
-            next_drop = await con.fetchval(
-                "UPDATE event_config SET next_drop_at=now()+make_interval(mins => $3),updated_at=now() "
-                "WHERE guild_id=$1 AND language=$2 RETURNING next_drop_at",
-                guild_id,
-                language,
-                delay,
+            next_local = next_drop_time(
+                await self._local_now(con), delay, cfg.daily_start, cfg.daily_end
             )
-            log.info(
-                "Próxima aparición guild=%s language=%s delay=%s min next=%s",
+            await con.execute(
+                "UPDATE event_config SET next_drop_at=($3::timestamp AT TIME ZONE $4),updated_at=now() "
+                "WHERE guild_id=$1 AND language=$2",
                 guild_id,
                 language,
-                delay,
-                next_drop,
+                next_local,
+                EVENT_TIMEZONE,
             )
 
     async def repair_schedule(self, guild_id: int, language: Language) -> None:
@@ -203,6 +245,17 @@ class Repository:
             )
             if not is_test:
                 if not row["enabled"] or not row["due"]:
+                    return None
+                cfg = EventConfig.from_record(
+                    {key: value for key, value in row.items() if key != "due"}
+                )
+                if not await self._window_open(con, cfg):
+                    await con.execute(
+                        "UPDATE event_config SET next_drop_at=NULL WHERE guild_id=$1 AND language=$2",
+                        guild_id,
+                        language,
+                    )
+                    await self._schedule_if_idle(con, guild_id, language)
                     return None
                 if await con.fetchval(
                     "SELECT EXISTS(SELECT 1 FROM door_drops WHERE guild_id=$1 AND language=$2 "
@@ -302,7 +355,17 @@ class Repository:
                 drop["language"],
             )
             drop = await con.fetchrow("SELECT * FROM door_drops WHERE id=$1 FOR UPDATE", drop_id)
-            if drop["status"] != "publishing" or (not drop["is_test"] and not cfg["enabled"]):
+            if drop["status"] != "publishing":
+                yield con, None
+                return
+            if not drop["is_test"] and (
+                not cfg["enabled"] or not await self._window_open(con, EventConfig.from_record(cfg))
+            ):
+                await con.execute(
+                    "UPDATE door_drops SET status='cancelled',finished_at=now() WHERE id=$1",
+                    drop_id,
+                )
+                await self._schedule_if_idle(con, drop["guild_id"], Language(drop["language"]))
                 yield con, None
                 return
             # Hold both locks across Discord publication so disable cannot race a pending send.

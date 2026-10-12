@@ -242,6 +242,8 @@ async def test_schema_upgrade_preserves_legacy_scores_and_active_doors(repo):
     )
     await repo.pool.execute(SCHEMA_SQL)
     await repo.pool.execute(SCHEMA_SQL)
+    # Deployment creates fresh connections after upgrading, rather than reusing old SELECT * plans.
+    await repo.pool.expire_connections()
     assert [dict(row) for row in await repo.ranking(GUILD, Language.ES)] == before
     assert (await repo.drop(drop.id)).candy_win
     assert (await repo.config(GUILD, Language.ES)).win_percent == 100

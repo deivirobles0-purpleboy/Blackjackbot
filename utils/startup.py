@@ -57,6 +57,8 @@ def _config_status(guild, cfg: EventConfig | None, language: Language) -> list[s
         return [f"{language}: Canal y CD pendientes; configura /config_doces"]
     channel = guild.get_channel(cfg.channel_id)
     state = "Activo" if cfg.enabled else "Inactivo"
+    if cfg.enabled and cfg.daily_start is not None:
+        state = f"Programado {cfg.daily_start:%H:%M}-{cfg.daily_end:%H:%M} São Paulo"
     next_drop = (
         cfg.next_drop_at.strftime("%Y-%m-%d %H:%M:%S UTC") if cfg.next_drop_at else "no programada"
     )

@@ -109,6 +109,8 @@ def state_embed(cfg: EventConfig) -> discord.Embed:
     )
     unknown = "No configurado" if es else "Não configurado"
     active = "🟢 Activo" if es else "🟢 Ativo"
+    if cfg.daily_start is not None:
+        active = "🕒 Programado diariamente"
     inactive = "🔴 Inactivo" if es else "🔴 Inativo"
     if cfg.next_drop_at:
         seconds = max(0, round((cfg.next_drop_at - now).total_seconds()))
@@ -145,6 +147,12 @@ def state_embed(cfg: EventConfig) -> discord.Embed:
         embed.add_field(
             name="Configuración / Configuração",
             value="Configura Canal y CD / Configure Canal e CD",
+            inline=False,
+        )
+    if cfg.daily_start is not None:
+        embed.add_field(
+            name="Horario diario" if es else "Horário diário",
+            value=f"{cfg.daily_start:%H:%M} – {cfg.daily_end:%H:%M} (São Paulo)",
             inline=False,
         )
     return embed

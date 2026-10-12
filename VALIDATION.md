@@ -1,10 +1,34 @@
-# Validación local — 7 de octubre de 2026
+# Validación local — actualizada el 12 de octubre de 2026
 
 Entorno: Windows, Python 3.14.6, discord.py 2.7.1, asyncpg 0.31.0,
 PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni Aiven.
 
 ## Resultados
 
+- Programación diaria del 12 de octubre: **suite completa de 263 pruebas aprobadas con
+  PostgreSQL temporal, cero fallos y ninguna omitida**. `/ativar_doces inicio fim` usa HH:MM
+  en formato de 24 horas y guarda una franja recurrente para ES/BR en São Paulo.
+  Se comprobaron apertura inclusiva, cierre exclusivo, medianoche, respeto del CD,
+  persistencia al reiniciar, reemplazo de horarios y rollback si falla la auditoría.
+  Preparación y publicación vuelven a comprobar la franja, incluso si cierra entre ambos pasos.
+  Las puertas ya publicadas terminan; `/desativar_doces` elimina el horario y evita la reanudación.
+  La migración es repetible y conserva las configuraciones anteriores sin horario.
+  El payload de registro incluye los campos obligatorios `inicio` y `fim`; la confirmación
+  conserva los checks BR/ES y muestra la franja. No se añaden avisos rutinarios del motor.
+  La prueba de actualización renueva las conexiones después de migrar, como en un reinicio,
+  para no reutilizar consultas preparadas con el esquema anterior.
+- Limpieza de logs del motor del 12 de octubre: **46 pruebas aprobadas con PostgreSQL temporal**
+  de logs, flujo, repositorio, tareas, puertas de prueba, clics silenciosos y vencimiento.
+  Publicación, espera, resultados, borrado y programación funcionan sin avisos rutinarios,
+  comprobado también con captura a nivel DEBUG. Una verificación local con interacciones
+  simuladas confirmó que `/ativar_doces` y `/desativar_doces` conservan sus avisos.
+  Los errores del motor siguen registrados.
+- Actualización a WebP del 12 de octubre: **74 pruebas locales aprobadas** de configuración,
+  embeds, probabilidades y logs; 7 pruebas PostgreSQL excluidas de esta ejecución.
+  Puerta cerrada/espera usa PuertaWEBP.webp, ganar DulcesWEBP.webp y perder RobaWEBP.webp,
+  en ES y BR; la puerta vencida conserva Vencida.png. Se comprobó que las URLs GIF y WebP
+  se aceptan con los identificadores existentes y llegan al embed sin conversión.
+  La reproducción real debe comprobarse en Discord después del despliegue.
 - `python -m compileall .`: finalizó con código 0.
 - `ruff check .`: sin errores.
 - `pip check`: sin dependencias incompatibles.
@@ -38,7 +62,7 @@ La suite comprobó:
 - Diez comandos Slash, opciones ES/BR, paneles, Modal y ChannelSelect.
 - Views persistentes e IDs estables; botón activo al recibir participantes y rojo desactivado durante la espera.
 - Imágenes separadas por idioma y fase mediante URLs ficticias en tests.
-- GIFs integrados: Puerta para cierre/espera, Dulces para ganar y Roba para perder ES/BR.
+- URLs WebP integradas: Puerta para cierre/espera, Dulces para ganar y Roba para perder ES/BR.
 - Variables CANDY_WIN/CANDY_LOSE independientes y compatibilidad con RESULT; el nombre nuevo tiene prioridad.
 - Porcentajes enteros entre 0 y 100 que suman 100; valores predeterminados 100/0 por idioma.
 - Límites exactos de sorteo (0%, 1%, 37%, 99%, 100%) y pérdidas de 2 a 5.
