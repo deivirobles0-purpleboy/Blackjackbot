@@ -7,6 +7,7 @@ from uuid import UUID
 import discord
 
 from halloween.models import Language
+from halloween.texts import TEXTS
 from utils.errors import SafeView
 
 log = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class DoorButton(
         self.drop_id = drop_id
         super().__init__(
             discord.ui.Button(
-                label="Abrir",
+                label=TEXTS[language].door_button,
                 style=discord.ButtonStyle.green,
                 custom_id=door_custom_id(language, drop_id),
             )
@@ -53,7 +54,7 @@ class DoorView(SafeView):
         if disabled or expired:
             self.add_item(
                 discord.ui.Button(
-                    label="Que pena" if expired else "Abrir",
+                    label="Que pena" if expired else TEXTS[language].door_button,
                     style=discord.ButtonStyle.red,
                     disabled=True,
                     custom_id=door_custom_id(language, drop_id),

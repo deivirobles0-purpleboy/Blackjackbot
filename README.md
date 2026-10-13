@@ -160,6 +160,8 @@ El Staff ejecuta `/abrir_registro_halloween` en el canal elegido. Publica un Emb
 público con el título `🎃 Evento Halloween Supersus SA Oficial 🎃`, sin descripción
 ni footer, y el botón verde **Entrar**. El botón usa un ID estable y `timeout=None`;
 se registra al iniciar y sigue funcionando tras un reinicio.
+El embed se envía como mensaje independiente, sin el encabezado que identifica al
+autor del comando. Se elimina la respuesta privada temporal al terminar la publicación.
 
 Para obtener el rol participante `1556139539502989404`, el usuario debe tener al
 menos uno de estos roles verificados:
@@ -292,7 +294,7 @@ en su canal original.
 1. Se crea un drop en PostgreSQL, se sortea una sola victoria o derrota según la
    probabilidad del idioma y se guarda el resultado para ambos participantes.
    Se envía un mensaje con la puerta cerrada y
-   **Abrir** verde.
+   el botón verde **TOCAR** en ES o **BATER** en BR.
 2. Se revisa primero el rol participante. Los usuarios sin él reciben el Embed
    privado de registro, no consumen cupo y no modifican el ranking.
 3. Se aceptan como máximo dos usuarios distintos. En una victoria, cada aceptación sortea
@@ -302,7 +304,7 @@ en su canal original.
 4. La puerta recibe hasta dos participantes durante 6 segundos desde su publicación.
    El primer clic mantiene la puerta abierta. Al entrar el segundo, o al terminar
    los 6 segundos con un participante, se edita **el mismo mensaje** a «Esperando recompensas»
-   con su imagen y el botón Abrir rojo desactivado. Sin participantes, la puerta vence.
+   con su imagen y el botón TOCAR/BATER rojo desactivado. Sin participantes, la puerta vence.
 5. A los 5 segundos desde iniciar la fase de espera, se vuelve a editar **ese mismo Message ID** para mostrar
    participantes y la animación de ganar o perder, eliminando el botón. El embed de derrota
    muestra el descuento real de cada usuario; con saldo cero muestra 0. Ambos resultados
@@ -329,7 +331,7 @@ ni enviar avisos efímeros. El vencimiento se muestra únicamente en el embed p�
 El mensaje vencido se elimina **10 segundos después de mostrar el estado vencido**.
 
 Con un participante, la puerta sigue abierta hasta completar los 6 segundos originales.
-Con dos, inicia la fase de espera inmediatamente. Durante esa fase, Abrir está
+Con dos, inicia la fase de espera inmediatamente. Durante esa fase, TOCAR/BATER está
 desactivado y se rechazan clics antiguos antes de modificar saldos. La espera de
 recompensas dura 5 segundos y se recupera tras reinicios. El resultado final, tanto al ganar
 como al perder, se elimina **20 segundos después de publicarse**. Los plazos y el
@@ -351,7 +353,7 @@ el timer ni la fecha de última puerta del sistema automático.
 
 - Lock local por puerta y `SELECT FOR UPDATE` para ordenar claims.
 - La recepción de participantes conserva el plazo de 6 segundos de publicación.
-  Al cerrar cupos se inicia una espera de 5 segundos con Abrir desactivado.
+  Al cerrar cupos se inicia una espera de 5 segundos con TOCAR/BATER desactivado.
   La resolución usa una tarea separada de los chequeos de puertas abiertas.
 - La actualización del esquema recupera puertas de la versión anterior que quedaron
   abiertas con un solo participante; conserva las puntuaciones ya confirmadas.

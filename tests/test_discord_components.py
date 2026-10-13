@@ -10,6 +10,7 @@ import pytest
 
 from bot import HalloweenBot
 from cogs.configuration import ChannelView, ConfigurationPanel, LanguagePanel, MinutesModal
+from cogs.registration import Registration
 from config.constants import (
     PARTICIPANT_ROLE_ID,
     REGISTRATION_CUSTOM_ID,
@@ -80,6 +81,47 @@ async def test_load_all_cogs_and_slash_choices_offline():
         assert not bot.intents.members
 
 
+@pytest.mark.parametrize("loading_already_removed", [False, True])
+async def test_registration_posts_independent_message(loading_already_removed):
+    interaction = SimpleNamespace(
+        response=SimpleNamespace(defer=AsyncMock(), send_message=AsyncMock()),
+        channel=SimpleNamespace(send=AsyncMock()),
+        followup=SimpleNamespace(send=AsyncMock()),
+        delete_original_response=AsyncMock(),
+    )
+    if loading_already_removed:
+        interaction.delete_original_response.side_effect = discord.NotFound(
+            SimpleNamespace(status=404, reason="Not Found"), "Unknown Message"
+        )
+
+    async def publish(**kwargs):
+        interaction.response.defer.assert_awaited_once_with(ephemeral=True, thinking=True)
+        interaction.delete_original_response.assert_not_awaited()
+
+    interaction.channel.send.side_effect = publish
+    await Registration.open_registration.callback(Registration(), interaction)
+
+    interaction.channel.send.assert_awaited_once()
+    published = interaction.channel.send.call_args.kwargs
+    assert published["embed"].title == "🎃 Evento Halloween Supersus SA Oficial 🎃"
+    assert published["view"].is_persistent()
+    assert published["view"].children[0].custom_id == REGISTRATION_CUSTOM_ID
+    interaction.response.send_message.assert_not_awaited()
+    interaction.followup.send.assert_not_awaited()
+    interaction.delete_original_response.assert_awaited_once_with()
+
+
+async def test_registration_publication_failure_keeps_error_response_available():
+    interaction = SimpleNamespace(
+        response=SimpleNamespace(defer=AsyncMock()),
+        channel=SimpleNamespace(send=AsyncMock(side_effect=OSError("Publication failed"))),
+        delete_original_response=AsyncMock(),
+    )
+    with pytest.raises(OSError, match="Publication failed"):
+        await Registration.open_registration.callback(Registration(), interaction)
+    interaction.delete_original_response.assert_not_awaited()
+
+
 async def test_persistent_views_ids_and_channel_select():
     registration = RegistrationView()
     assert registration.is_persistent()
@@ -88,9 +130,12 @@ async def test_persistent_views_ids_and_channel_select():
     for language in Language:
         view = DoorView(language, drop_id)
         assert view.is_persistent()
+        expected_label = "TOCAR" if language == Language.ES else "BATER"
+        assert view.children[0].item.label == expected_label
         assert view.children[0].custom_id == door_custom_id(language, drop_id)
         disabled = DoorView(language, drop_id, disabled=True).children[0]
         assert disabled.disabled
+        assert disabled.label == expected_label
         assert disabled.style == discord.ButtonStyle.red
         expired = DoorView(language, drop_id, expired=True).children[0]
         assert expired.disabled

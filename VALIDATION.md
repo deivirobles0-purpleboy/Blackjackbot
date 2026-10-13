@@ -5,6 +5,10 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 
 ## Resultados
 
+- Registro independiente del 12 de octubre: **23 pruebas de componentes y permisos aprobadas**.
+  El embed se publica mediante el canal; la respuesta privada temporal del comando se elimina.
+  Se comprobaron el botón persistente, la respuesta temporal ya eliminada y la propagación
+  de errores de publicación. Los botones de puertas muestran TOCAR en ES y BATER en BR.
 - Programación diaria del 12 de octubre: **suite completa de 263 pruebas aprobadas con
   PostgreSQL temporal, cero fallos y ninguna omitida**. `/ativar_doces inicio fim` usa HH:MM
   en formato de 24 horas y guarda una franja recurrente para ES/BR en São Paulo.

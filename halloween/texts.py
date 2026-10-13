@@ -8,6 +8,7 @@ from halloween.models import Language
 class Texts:
     title: str
     closed: str
+    door_button: str
     waiting: str
     candy_win: str
     candy_lose: str
@@ -34,7 +35,8 @@ class Texts:
 TEXTS = {
     Language.ES: Texts(
         title="Dulce o Truco ?",
-        closed='Una puerta apareció... Apresúrate y presiona "Abrir" para reclamar tus recompensas.',
+        closed='Una puerta apareció... Apresúrate y presiona "TOCAR" para reclamar tus recompensas.',
+        door_button="TOCAR",
         waiting="Esperando recompensas...",
         candy_win="Felicidades, obtuvieron...",
         candy_lose="Desafortunadamente el Gatico Momia se llevó algunos de tus dulces...",
@@ -60,7 +62,8 @@ TEXTS = {
     ),
     Language.BR: Texts(
         title="Doces ou Travessuras ?",
-        closed='Uma porta surgiu... Apresse-se e pressione "Abrir" para resgatar suas recompensas.',
+        closed='Uma porta surgiu... Apresse-se e pressione "BATER" para resgatar suas recompensas.',
+        door_button="BATER",
         waiting="Esperando recompensas...",
         candy_win="Parabéns, vocês conseguiram...",
         candy_lose="Infelizmente, o Gatinho Múmia levou alguns dos teus doces com ele...",
