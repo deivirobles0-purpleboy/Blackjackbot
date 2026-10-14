@@ -35,6 +35,13 @@ async def test_button_flow_reveals_only_in_original_public_embed(
     )
     channel = FakeChannel()
     mgr = manager(repo, channel)
+    channel.guild.get_member = lambda user_id: (
+        SimpleNamespace(nick="Nick 11", display_name="User 11") if user_id == 11 else None
+    )
+    channel.guild.fetch_member = AsyncMock(
+        return_value=SimpleNamespace(nick="Nick 12", display_name="User 12")
+    )
+    mgr.bot.get_user = lambda _: None
     drop = await repo.prepare_drop(GUILD, language, CHANNEL, is_test=True, rewards_enabled=real)
     await mgr.run_drop(drop.id)
     drop = await repo.drop(drop.id)
@@ -93,16 +100,16 @@ async def test_button_flow_reveals_only_in_original_public_embed(
         )
         assert final.description == (
             f"{TEXTS[language].candy_win}\n\n"
-            f"🎃 <@11>: 2 {TEXTS[language].candy}\n"
-            f"🎃 <@12>: 5 {TEXTS[language].candy}"
+            f"🎃 Nick 11: 2 {TEXTS[language].candy}\n"
+            f"🎃 Nick 12: 5 {TEXTS[language].candy}"
         )
         assert final.image.url == DEFAULT_DOOR_IMAGES[language].candy_win
     else:
         assert final.title == TEXTS[language].lose_title
         assert final.description == (
             f"{TEXTS[language].candy_lose}\n\n"
-            "<@11>: -3 <:doce:1556451862969065512>\n"
-            "<@12>: -4 <:doce:1556451862969065512>"
+            "Nick 11: -3 <:doce:1556451862969065512>\n"
+            "Nick 12: -4 <:doce:1556451862969065512>"
         )
         assert final.image.url == DEFAULT_DOOR_IMAGES[language].candy_lose
     assert final.footer.text == (
@@ -110,6 +117,8 @@ async def test_button_flow_reveals_only_in_original_public_embed(
         if language == Language.ES
         else "Confira o /doces para consultar o top"
     )
+    assert "<@" not in final.description
+    channel.guild.fetch_member.assert_awaited_once_with(12)
     assert (await repo.drop(drop.id)).delete_at is not None
     balances = {row["user_id"]: row["candies"] for row in await repo.ranking(GUILD, language)}
     expected = (

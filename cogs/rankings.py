@@ -1,4 +1,3 @@
-import asyncio
 import math
 
 import discord
@@ -10,6 +9,7 @@ from halloween.embeds import ranking_embed
 from halloween.models import Language
 from halloween.texts import TEXTS
 from utils.cooldowns import Cooldowns
+from utils.display_names import resolve_display_names
 
 
 class Rankings(commands.Cog):
@@ -18,34 +18,12 @@ class Rankings(commands.Cog):
         self.cooldowns = Cooldowns()
 
     async def display_names(self, interaction: discord.Interaction, rows) -> dict[int, str]:
-        # Only the top 15 need resolution; bound REST requests when members aren't cached.
-        limit = asyncio.Semaphore(5)
-
-        async def resolve(user_id: int) -> tuple[int, str]:
-            async with limit:
-                guild = interaction.guild
-                member = (
-                    interaction.user
-                    if interaction.user.id == user_id
-                    and isinstance(interaction.user, discord.Member)
-                    else guild.get_member(user_id)
-                )
-                if member is None:
-                    try:
-                        member = await guild.fetch_member(user_id)
-                    except (discord.HTTPException, OSError, TimeoutError):
-                        pass
-                if member is not None:
-                    return user_id, member.nick or member.display_name
-                user = self.bot.get_user(user_id)
-                if user is None:
-                    try:
-                        user = await self.bot.fetch_user(user_id)
-                    except (discord.HTTPException, OSError, TimeoutError):
-                        pass
-                return user_id, user.display_name if user is not None else ""
-
-        return dict(await asyncio.gather(*(resolve(row["user_id"]) for row in rows[:15])))
+        return await resolve_display_names(
+            self.bot,
+            interaction.guild,
+            (row["user_id"] for row in rows[:15]),
+            member=interaction.user if isinstance(interaction.user, discord.Member) else None,
+        )
 
     async def show(self, interaction: discord.Interaction, language: Language) -> None:
         command = "dulces" if language == Language.ES else "doces"

@@ -19,9 +19,9 @@ class DoorImages:
     timeout: str = ""
 
 
-DEFAULT_DOOR_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaWEBP.webp"
-DEFAULT_CANDY_WIN_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesWEBP.webp"
-DEFAULT_CANDY_LOSE_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaWEBP.webp"
+DEFAULT_DOOR_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaOpti.webp"
+DEFAULT_CANDY_WIN_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/CandyWIN.webp"
+DEFAULT_CANDY_LOSE_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaOpti.webp"
 DEFAULT_DOOR_TIMEOUT_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png"
 DEFAULT_DOOR_IMAGES = {
     language: DoorImages(

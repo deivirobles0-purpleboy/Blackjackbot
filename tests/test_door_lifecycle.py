@@ -109,8 +109,8 @@ async def test_collecting_single_participant_recovers_then_disables_waiting_butt
     assert message.edits[0]["embed"].description == TEXTS[language].waiting
     assert message.edits[0]["view"].children[0].disabled
     assert message.edits[1]["view"] is None
-    assert "<@11>" in message.edits[1]["embed"].description
-    assert "<@12>" not in message.edits[1]["embed"].description
+    assert "Nick 11" in message.edits[1]["embed"].description
+    assert "Nick 12" not in message.edits[1]["embed"].description
     assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
     assert channel.sends == 1
 

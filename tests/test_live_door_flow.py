@@ -111,8 +111,9 @@ async def test_live_first_click_progresses_without_manual_run_or_fake_timers(
         assert final.image.url == getattr(
             DEFAULT_DOOR_IMAGES[language], "candy_win" if candy_win else "candy_lose"
         )
-        assert f"<@11>: {'2' if candy_win else '-3'}" in final.description
-        assert ("<@12>" in final.description) == (participants == 2)
+        assert f"Nick 11: {'2' if candy_win else '-3'}" in final.description
+        assert ("Nick 12" in final.description) == (participants == 2)
+        assert "<@" not in final.description
         assert final.footer.text == TEXTS[language].footer
         assert channel.sends == 1
         assert list(channel.messages) == [drop.message_id]
@@ -211,7 +212,7 @@ async def test_schema_recovers_former_open_door_with_one_participant_without_rep
     assert (await repo.drop(drop.id)).status == DropStatus.FINISHED
     assert [dict(row) for row in await repo.ranking(GUILD, language)] == balances
     final = channel.messages[drop.message_id].edits[-1]["embed"]
-    assert "<@11>" in final.description
+    assert "Nick 11" in final.description
     assert final.image.url == getattr(
         DEFAULT_DOOR_IMAGES[language], "candy_win" if candy_win else "candy_lose"
     )

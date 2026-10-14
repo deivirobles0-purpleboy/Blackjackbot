@@ -8,10 +8,16 @@ import discord
 from config.settings import Settings
 from halloween.models import DoorDrop, EventConfig, Language
 from halloween.texts import TEXTS
+from utils.display_names import display_name_label
 
 
 def door_embed(
-    drop: DoorDrop, phase: str, settings: Settings, winners: Sequence[Mapping] = ()
+    drop: DoorDrop,
+    phase: str,
+    settings: Settings,
+    winners: Sequence[Mapping] = (),
+    *,
+    display_names: Mapping[int, str] | None = None,
 ) -> discord.Embed:
     text = TEXTS[drop.language]
     image_phase = ("candy_win" if drop.candy_win else "candy_lose") if phase == "result" else phase
@@ -20,11 +26,12 @@ def door_embed(
     description = text.expired if phase == "expired" else getattr(text, image_phase)
     title = text.lose_title if phase == "result" and not drop.candy_win else text.title
     if phase == "result":
+        names = display_names or {}
         description += "\n\n" + "\n".join(
             (
-                f"🎃 <@{winner['user_id']}>: {winner['candies']} {text.candy}"
+                f"🎃 {display_name_label(drop.language, winner['user_id'], names)}: {winner['candies']} {text.candy}"
                 if drop.candy_win
-                else f"<@{winner['user_id']}>: {winner['candies']} {text.candy}"
+                else f"{display_name_label(drop.language, winner['user_id'], names)}: {winner['candies']} {text.candy}"
             )
             for winner in winners
         )
@@ -52,16 +59,10 @@ def ranking_embed(
 ) -> discord.Embed:
     text = TEXTS[language]
     names = display_names or {}
-    unknown = "Usuario desconocido" if language == Language.ES else "Usuário desconhecido"
-
-    def label(user_id: int) -> str:
-        name = names.get(user_id) or unknown
-        name = " ".join(name.splitlines())
-        return discord.utils.escape_markdown(name).replace("@", "@\u200b")
 
     description = (
         "\n".join(
-            f"**{index}.** {label(row['user_id'])} — **{row['candies']} {text.candy}**"
+            f"**{index}.** {display_name_label(language, row['user_id'], names)} — **{row['candies']} {text.candy}**"
             for index, row in enumerate(rows[:15], start=1)
         )
         or text.empty_ranking

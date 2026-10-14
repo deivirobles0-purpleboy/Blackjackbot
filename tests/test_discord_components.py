@@ -171,13 +171,20 @@ def test_images_language_phase_and_exact_embeds(extension):
             None,
         )
         for phase in ("closed", "waiting", "result", "expired"):
-            embed = door_embed(drop, phase, settings(extension), [{"user_id": 123, "candies": 4}])
+            embed = door_embed(
+                drop,
+                phase,
+                settings(extension),
+                [{"user_id": 123, "candies": 4}],
+                display_names={123: "Nick visible"},
+            )
             image_phase = {"result": "candy_win", "expired": "timeout"}.get(phase, phase)
             assert (
                 embed.image.url == f"https://example.com/{language.value}/{image_phase}.{extension}"
             )
             if phase == "result":
-                assert "<@123>: 4" in embed.description
+                assert "Nick visible: 4" in embed.description
+                assert "<@" not in embed.description
 
 
 def test_state_dynamic_last_drop_and_missing_config():

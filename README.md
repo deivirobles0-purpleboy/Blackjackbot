@@ -102,9 +102,9 @@ y [Views persistentes del proyecto discord.py](https://github.com/Rapptz/discord
 Las imágenes ya tienen valores predeterminados incluidos en `config/settings.py`
 para ambos idiomas:
 
-- Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaWEBP.webp`.
-- Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/DulcesWEBP.webp`.
-- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaWEBP.webp`.
+- Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaOpti.webp`.
+- Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/CandyWIN.webp`.
+- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaOpti.webp`.
 - Puerta vencida ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png`.
 
 No necesitas configurar las diez variables para mostrar imágenes. Si una variable
@@ -311,6 +311,12 @@ en su canal original.
    conservan el footer del top correspondiente al idioma. El resultado se publica
    con uno o dos participantes; no espera indefinidamente al segundo. Se programa
    el siguiente drop.
+
+Los resultados de ganar y perder muestran el apodo del servidor, sin menciones.
+Si no hay apodo, se usa el nombre visible; si Discord no permite recuperar ningún
+nombre, se muestra «Usuario desconocido» en ES o «Usuário desconhecido» en BR.
+Los nombres se consultan durante la espera de recompensas, con un límite de tiempo
+para que una consulta bloqueada no impida mostrar el resultado.
 
 El clic aceptado se confirma silenciosamente: no se envía un resultado ni una
 confirmación de recompensa efímera. Puerta cerrada, espera y resultado se muestran

@@ -1,10 +1,20 @@
-# Validación local — actualizada el 12 de octubre de 2026
+# Validación local — actualizada el 13 de octubre de 2026
 
 Entorno: Windows, Python 3.14.6, discord.py 2.7.1, asyncpg 0.31.0,
 PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni Aiven.
 
 ## Resultados
 
+- Apodos en resultados del 13 de octubre: **suite completa de 271 pruebas aprobadas con
+  PostgreSQL temporal, cero fallos y ninguna omitida**. Ganar y perder en ES/BR muestran
+  el apodo del servidor o el nombre visible, sin menciones. El ranking comparte la misma
+  resolución y el mismo formato seguro. Se comprobaron nombres ausentes, consultas REST,
+  caracteres Markdown, intentos de insertar menciones y consultas bloqueadas.
+  Los nombres se resuelven durante la espera con un límite de 3 segundos por usuario;
+  los flujos de uno/dos participantes, reinicios y borrado a los 20 segundos siguen pasando.
+- Imágenes optimizadas del 13 de octubre: cerrada y espera usan PuertaOpti.webp,
+  ganar CandyWIN.webp y perder RobaOpti.webp en ES y BR. Vencida conserva Vencida.png.
+  **50 pruebas de configuración y componentes aprobadas**.
 - Registro independiente del 12 de octubre: **23 pruebas de componentes y permisos aprobadas**.
   El embed se publica mediante el canal; la respuesta privada temporal del comando se elimina.
   Se comprobaron el botón persistente, la respuesta temporal ya eliminada y la propagación

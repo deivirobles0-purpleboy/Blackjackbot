@@ -116,10 +116,14 @@ def test_loss_embed_with_zero_balance_and_matching_footer(language):
     )
     settings = Settings("test", "postgresql://test@localhost/test", DEFAULT_DOOR_IMAGES)
     embed = door_embed(
-        drop, "result", settings, [{"user_id": 11, "candies": 0}, {"user_id": 12, "candies": -4}]
+        drop,
+        "result",
+        settings,
+        [{"user_id": 11, "candies": 0}, {"user_id": 12, "candies": -4}],
+        display_names={11: "Nick 11", 12: "Nick 12"},
     )
     assert (
-        "<@11>: 0 <:doce:1556451862969065512>\n<@12>: -4 <:doce:1556451862969065512>"
+        "Nick 11: 0 <:doce:1556451862969065512>\nNick 12: -4 <:doce:1556451862969065512>"
         in embed.description
     )
     if language == Language.BR:

@@ -66,7 +66,9 @@ async def test_name_lookup_only_fetches_top_fifteen():
         ),
     )
     interaction = SimpleNamespace(guild=guild, user=SimpleNamespace(id=99))
-    names = await Rankings(SimpleNamespace()).display_names(interaction, rows)
+    names = await Rankings(SimpleNamespace(get_user=lambda _: None)).display_names(
+        interaction, rows
+    )
     assert set(names) == set(range(1, 16))
     assert guild.fetch_member.await_count == 15
 

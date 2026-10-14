@@ -16,6 +16,7 @@ from halloween.embeds import door_embed
 from halloween.models import ClaimStatus, DoorDrop, DropStatus, Language
 from halloween.texts import TEXTS
 from halloween.views import DoorView, door_custom_id
+from utils.display_names import resolve_display_names
 from utils.roles import get_member, is_participant
 
 log = logging.getLogger(__name__)
@@ -277,7 +278,13 @@ class DoorManager:
                 await self.repo.finish(drop.id, cancelled=True)
                 return
         # Keep the lock free while waiting; stale clicks are rejected by the database.
-        await self._wait_for_result(drop)
+        participants = await self.repo.winners(drop.id)
+        _, names = await asyncio.gather(
+            self._wait_for_result(drop),
+            resolve_display_names(
+                self.bot, channel.guild, (row["user_id"] for row in participants)
+            ),
+        )
         self.require_leader()
         async with self._lock(drop_id):
             current = await self.repo.drop(drop_id)
@@ -287,7 +294,9 @@ class DoorManager:
             self.require_leader()
             try:
                 await message.edit(
-                    embed=door_embed(current, "result", self.settings, winners),
+                    embed=door_embed(
+                        current, "result", self.settings, winners, display_names=names
+                    ),
                     view=None,
                     allowed_mentions=discord.AllowedMentions.none(),
                 )

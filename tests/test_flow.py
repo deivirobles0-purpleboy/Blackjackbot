@@ -34,6 +34,11 @@ class FakeChannel:
     def __init__(self):
         self.messages = {}
         self.sends = 0
+        self.guild = SimpleNamespace(
+            get_member=lambda user_id: SimpleNamespace(
+                nick=f"Nick {user_id}", display_name=f"User {user_id}"
+            )
+        )
 
     def history(self, **kwargs):
         async def items():
@@ -113,7 +118,7 @@ async def test_three_phases_same_message_and_processing_recovery(
     )
     if not candy_win:
         assert (
-            "<@11>: -3 <:doce:1556451862969065512>\n<@12>: -4 <:doce:1556451862969065512>"
+            "Nick 11: -3 <:doce:1556451862969065512>\nNick 12: -4 <:doce:1556451862969065512>"
             in result_embed.description
         )
         assert result_embed.title == (
