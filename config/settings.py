@@ -21,8 +21,13 @@ class DoorImages:
 
 DEFAULT_DOOR_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaOpti.webp"
 DEFAULT_CANDY_WIN_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/CandyWIN.webp"
-DEFAULT_CANDY_LOSE_IMAGE_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaOpti.webp"
+# Use a new URL to refresh media previously cached without a visible image.
+DEFAULT_CANDY_LOSE_IMAGE_URL = (
+    "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaOpti.webp?v=20261013"
+)
 DEFAULT_DOOR_TIMEOUT_URL = "https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png"
+DEFAULT_MEDIA_CACHE_CHANNEL_ID = 1556194178902396999
+DEFAULT_MEDIA_CACHE_REFRESH_KEY = "optimized-20261013-v1"
 DEFAULT_DOOR_IMAGES = {
     language: DoorImages(
         closed=DEFAULT_DOOR_IMAGE_URL,
@@ -53,6 +58,8 @@ class Settings:
     ca_pem: str = field(default="", repr=False)
     log_level: str = "INFO"
     command_guild_id: int | None = None
+    media_cache_channel_id: int | None = DEFAULT_MEDIA_CACHE_CHANNEL_ID
+    media_cache_refresh_key: str = DEFAULT_MEDIA_CACHE_REFRESH_KEY
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -82,6 +89,16 @@ class Settings:
                 values[phase] = validate_image_url(value, name)
             images[language] = DoorImages(**values)
         guild = os.getenv("COMMAND_GUILD_ID", "").strip()
+        cache_channel = os.getenv(
+            "DISCORD_MEDIA_CACHE_CHANNEL_ID", str(DEFAULT_MEDIA_CACHE_CHANNEL_ID)
+        ).strip()
+        if cache_channel and (not cache_channel.isdecimal() or not 0 < int(cache_channel) < 2**63):
+            raise ValueError("DISCORD_MEDIA_CACHE_CHANNEL_ID debe ser un ID de canal válido")
+        refresh_key = os.getenv(
+            "DISCORD_MEDIA_CACHE_REFRESH_KEY", DEFAULT_MEDIA_CACHE_REFRESH_KEY
+        ).strip()
+        if len(refresh_key) > 100:
+            raise ValueError("DISCORD_MEDIA_CACHE_REFRESH_KEY admite hasta 100 caracteres")
         return cls(
             token=os.environ["DISCORD_TOKEN"].strip(),
             database_url=url,
@@ -90,4 +107,6 @@ class Settings:
             ca_pem=os.getenv("DATABASE_CA_PEM", "").replace("\\n", "\n").strip(),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
             command_guild_id=int(guild) if guild else None,
+            media_cache_channel_id=int(cache_channel) if cache_channel else None,
+            media_cache_refresh_key=refresh_key,
         )

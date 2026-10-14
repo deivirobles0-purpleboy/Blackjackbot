@@ -5,6 +5,28 @@ PostgreSQL 17.11 temporal en loopback. No se usaron credenciales de Discord ni A
 
 ## Resultados
 
+- Almacenamiento de imágenes en Discord del 13 de octubre: **suite completa de 301 pruebas
+  aprobadas con PostgreSQL temporal, cero fallos y ninguna omitida**. El canal configurado
+  es 1556194178902396999; se preparan cuatro archivos únicos antes de habilitar las puertas.
+  Reiniciar reutiliza adjuntos existentes sin descargar R2 ni duplicar mensajes. Una clave
+  de renovación se aplica una sola vez; dejarla vacía conserva los archivos renovados.
+  Se comprobaron permisos, límites de adjuntos, errores de descarga, mensajes eliminados,
+  recuperación de subidas con metadatos perdidos y enlaces sin firmas caducadas.
+  Las fases de puertas ES/BR usan el CDN de Discord con el mismo mensaje y sus plazos originales.
+  La descarga real mediante el nuevo módulo se verificó para los cuatro archivos de R2.
+  No se usó el token del bot ni se hicieron subidas reales a Discord; la confirmación
+  del almacenamiento en el canal debe observarse al desplegar (`Imágenes en Discord: 4/4 listas`).
+  Este sistema renueva las copias del bot y no borra la caché global de Discord.
+- Verificación de medios y vencimiento del 13 de octubre: los cuatro archivos de R2
+  respondieron HTTP 200 en descargas GET y todos sus fotogramas se decodificaron con Pillow.
+  RobaOpti.webp es una animación WebP válida de 360×640, 121 fotogramas y 3.241.250 bytes.
+  La configuración local de imágenes usa los valores predeterminados actuales en ES/BR.
+  Se versionó la URL de pérdida para renovar la solicitud de Discord; su descarga GET
+  también respondió HTTP 200. Esta comprobación no identifica la causa del fallo mostrado
+  dentro de Discord ni verifica las variables del despliegue en Square.
+  El vencimiento ya es de 6 segundos desde la publicación para ambos idiomas.
+  **94 pruebas de configuración, embeds, probabilidades y ciclo de puertas aprobadas**
+  con PostgreSQL temporal, ninguna omitida; incluye pérdida con saldo cero y la imagen de resultado.
 - Apodos en resultados del 13 de octubre: **suite completa de 271 pruebas aprobadas con
   PostgreSQL temporal, cero fallos y ninguna omitida**. Ganar y perder en ES/BR muestran
   el apodo del servidor o el nombre visible, sin menciones. El ranking comparte la misma

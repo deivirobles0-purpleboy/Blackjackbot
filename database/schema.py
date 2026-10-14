@@ -55,6 +55,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS one_live_automatic_door
     WHERE NOT is_test AND status IN ('publishing', 'open', 'processing');
 CREATE INDEX IF NOT EXISTS live_door_status ON door_drops (status)
     WHERE status IN ('publishing', 'open', 'processing');
+CREATE TABLE IF NOT EXISTS discord_media_cache (
+    bot_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    message_id BIGINT NOT NULL,
+    attachment_id BIGINT NOT NULL,
+    cdn_url TEXT NOT NULL,
+    refresh_key VARCHAR(100) NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, channel_id, source_hash)
+);
 CREATE TABLE IF NOT EXISTS door_winners (
     drop_id UUID NOT NULL REFERENCES door_drops (id),
     user_id BIGINT NOT NULL,

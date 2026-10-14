@@ -93,6 +93,16 @@ async def log_ready_status(bot: HalloweenBot) -> None:
         return
     if bot.synced_command_count == 0:
         issues.append("No hay comandos sincronizados")
+    media_cache = getattr(bot, "media_cache", None)
+    if (
+        media_cache
+        and media_cache.enabled
+        and media_cache.cached_count < media_cache.expected_count
+    ):
+        issues.append(
+            f"Imágenes en Discord pendientes: {media_cache.cached_count}/{media_cache.expected_count}; "
+            "se usan los enlaces originales para las restantes"
+        )
     if any(
         not getattr(bot.settings.images[language], phase)
         for language in Language

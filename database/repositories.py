@@ -34,6 +34,40 @@ class Repository:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
+    async def media_asset(self, bot_id: int, channel_id: int, source_hash: str):
+        return await self.pool.fetchrow(
+            "SELECT * FROM discord_media_cache WHERE bot_id=$1 AND channel_id=$2 AND source_hash=$3",
+            bot_id,
+            channel_id,
+            source_hash,
+        )
+
+    async def save_media_asset(
+        self,
+        bot_id: int,
+        channel_id: int,
+        source_hash: str,
+        message_id: int,
+        attachment_id: int,
+        cdn_url: str,
+        refresh_key: str,
+    ) -> None:
+        await self.pool.execute(
+            "INSERT INTO discord_media_cache "
+            "(bot_id,channel_id,source_hash,message_id,attachment_id,cdn_url,refresh_key) "
+            "VALUES ($1,$2,$3,$4,$5,$6,$7) "
+            "ON CONFLICT (bot_id,channel_id,source_hash) DO UPDATE SET "
+            "message_id=EXCLUDED.message_id,attachment_id=EXCLUDED.attachment_id,"
+            "cdn_url=EXCLUDED.cdn_url,refresh_key=EXCLUDED.refresh_key,updated_at=now()",
+            bot_id,
+            channel_id,
+            source_hash,
+            message_id,
+            attachment_id,
+            cdn_url,
+            refresh_key,
+        )
+
     async def ensure_config(self, guild_id: int) -> None:
         await self.pool.executemany(
             "INSERT INTO event_config (guild_id, language) VALUES ($1,$2) ON CONFLICT DO NOTHING",

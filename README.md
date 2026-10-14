@@ -94,6 +94,8 @@ y [Views persistentes del proyecto discord.py](https://github.com/Rapptz/discord
 | `BR_DOOR_CANDY_WIN_GIF` | Ganhar doces BR |
 | `BR_DOOR_CANDY_LOSE_GIF` | Perder doces BR |
 | `BR_DOOR_TIMEOUT` | Imagen de puerta vencida BR |
+| `DISCORD_MEDIA_CACHE_CHANNEL_ID` | Canal de archivos del bot: `1556194178902396999` por defecto; vacío conserva R2 |
+| `DISCORD_MEDIA_CACHE_REFRESH_KEY` | Renovación única por versión; después del primer despliegue puede dejarse vacío |
 | `DATABASE_CA_FILE` | Opcional: ruta al certificado CA de Aiven |
 | `DATABASE_CA_PEM` | Opcional: contenido PEM de la CA, admite saltos `\n` |
 | `COMMAND_GUILD_ID` | Opcional: servidor de sincronización para desarrollo |
@@ -104,8 +106,12 @@ para ambos idiomas:
 
 - Puerta cerrada y espera: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/PuertaOpti.webp`.
 - Ganar ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/CandyWIN.webp`.
-- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaOpti.webp`.
+- Perder ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/RobaOpti.webp?v=20261013`.
 - Puerta vencida ES y BR: `https://pub-a09b3609b6b34dfab5c7aa7742cd1a8a.r2.dev/Vencida.png`.
+
+La URL de pérdida incluye una versión para renovar la solicitud de imagen en Discord.
+Si Square tiene `ES_DOOR_CANDY_LOSE_GIF` o `BR_DOOR_CANDY_LOSE_GIF` configuradas,
+actualiza esos enlaces o deja ambas variables vacías para usar este valor predeterminado.
 
 No necesitas configurar las diez variables para mostrar imágenes. Si una variable
 está ausente o vacía, se utiliza el valor predeterminado; una URL HTTPS en esa
@@ -121,6 +127,38 @@ WebP o déjalas vacías para utilizar los valores predeterminados.
 Compatibilidad: `ES_DOOR_RESULT_GIF` y `BR_DOOR_RESULT_GIF` siguen aceptándose como
 respaldo para ganar cuando el nuevo nombre está ausente o vacío. El nuevo nombre
 no vacío tiene prioridad. Renombra las variables antiguas al actualizar Square.
+
+## Imágenes reutilizables en Discord
+
+Al iniciar, el proceso que controla las puertas prepara las imágenes en el canal
+`1556194178902396999` antes de aceptar nuevas publicaciones. El bot necesita View Channel,
+Send Messages, Attach Files y Read Message History en ese canal. Con los enlaces
+predeterminados se guardan **cuatro adjuntos**, compartidos entre ES/BR y entre cerrada/espera.
+Las animaciones se suben sin convertirlas. Los mensajes con esos archivos deben permanecer
+en el canal; los embeds públicos usan sus enlaces de Discord.
+
+La tabla `discord_media_cache` guarda los mensajes y adjuntos por bot, canal y enlace de
+origen. Un reinicio normal consulta esos mensajes y reutiliza los archivos, sin descargar
+R2 ni subir otra copia. Los enlaces usados en los embeds omiten los parámetros de firma:
+[Discord renueva automáticamente las URLs de adjuntos dentro de sus embeds](https://discord.com/developers/docs/reference#signed-attachment-cdn-urls).
+Cambiar un enlace de origen crea una nueva copia. Si un mensaje fue eliminado, la copia
+se reconstruye al iniciar. Si hay un error de permisos, descarga o subida, los archivos
+restantes siguen usando R2 y el problema queda indicado en los logs de inicio.
+
+La renovación inicial usa `DISCORD_MEDIA_CACHE_REFRESH_KEY=optimized-20261013-v1`.
+Cada valor se aplica una sola vez y queda registrado en PostgreSQL. Tras ver
+`Imágenes en Discord: 4/4 listas`, puede mantenerse ese valor o desactivar la renovación:
+
+```dotenv
+DISCORD_MEDIA_CACHE_REFRESH_KEY=
+```
+
+Dejarlo vacío conserva las copias nuevas y la reutilización del CDN. El módulo de
+imágenes es permanente; no hay que eliminarlo después del despliegue. Para renovar
+otra vez un archivo reemplazado en la misma URL, usa una clave nueva y reinicia.
+Las copias anteriores se conservan para los embeds que ya usaban sus enlaces.
+Este mecanismo renueva únicamente los archivos gestionados por el bot; no borra
+la caché global de Discord ni la caché de los clientes.
 
 ## Aiven PostgreSQL y SSL
 

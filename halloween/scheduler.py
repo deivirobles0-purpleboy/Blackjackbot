@@ -43,6 +43,8 @@ class Scheduler:
                     log.warning("Otro proceso posee el scheduler; este proceso espera")
                     await asyncio.sleep(30)
                     continue
+                # Prepare assets once, before doors can be published by the leader.
+                await self.bot.media_cache.prepare()
                 self.manager.leader.set()
                 self._open_checked.clear()
                 reported = False

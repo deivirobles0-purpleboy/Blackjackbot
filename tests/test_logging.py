@@ -144,3 +144,12 @@ async def test_scheduler_unavailable_does_not_report_success(caplog):
         await log_ready_status(bot)
     assert "scheduler todavía no disponible" in caplog.text
     assert "100%" not in caplog.text
+
+
+async def test_incomplete_discord_images_are_reported_in_startup(caplog):
+    bot = ready_bot()
+    bot.media_cache = SimpleNamespace(enabled=True, cached_count=3, expected_count=4)
+    with caplog.at_level(logging.INFO):
+        await log_ready_status(bot)
+    assert "Imágenes en Discord pendientes: 3/4" in caplog.text
+    assert "100%" not in caplog.text

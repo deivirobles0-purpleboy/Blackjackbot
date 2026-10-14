@@ -10,6 +10,7 @@ from config.settings import Settings
 from database.connection import Database
 from database.repositories import Repository
 from halloween.manager import DoorManager
+from halloween.media_cache import DiscordMediaCache
 from halloween.registration import RegistrationView
 from halloween.scheduler import Scheduler
 from halloween.views import DoorButton
@@ -31,6 +32,7 @@ class HalloweenBot(commands.Bot):
         )
         self.settings = settings
         self.database = Database(settings)
+        self.media_cache = DiscordMediaCache(self)
         self.repo: Repository | None = None
         self.manager: DoorManager | None = None
         self.scheduler: Scheduler | None = None
